@@ -16,15 +16,24 @@ fc_cond_length = 512
 n_blocks_fc = 8
 outputs = []
 
+'''
+First building block of INN
+'''
 conditions = [ConditionNode(feature_channels, c.img_dims[0], c.img_dims[1]),
               ConditionNode(fc_cond_length)]
 
+'''
+Generates shuffling matrices for features between coupling blocks
+'''
 def random_orthog(n):
     w = np.random.randn(n, n)
     w = w + w.T
     w, S, V = np.linalg.svd(w)
     return torch.FloatTensor(w)
 
+'''
+This is the prototype of the subnetwork of the INN that deals with the conditiong information
+'''
 def cond_subnet(level, c_out, extra_conv=False):
     c_intern = [feature_channels, 128, 128, 256]
     modules = []
@@ -46,6 +55,9 @@ def cond_subnet(level, c_out, extra_conv=False):
 
     return nn.Sequential(*modules)
 
+'''
+Convolutional head connecting the output of the conditioning network with the conditioned sections of the INN
+'''
 fc_cond_net = nn.Sequential(*[
                               nn.Conv2d(feature_channels, 128, 3, stride=2, padding=1), # 32 x 32
                               nn.LeakyReLU(),
@@ -58,6 +70,9 @@ fc_cond_net = nn.Sequential(*[
                               nn.BatchNorm2d(fc_cond_length),
                             ])
 
+'''
+Define conditioned sections of INN
+'''
 def _add_conditioned_section(nodes, depth, channels_in, channels, cond_level):
 
     for k in range(depth):
@@ -83,7 +98,9 @@ def _add_conditioned_section(nodes, depth, channels_in, channels, cond_level):
 
             nodes.append(Node([nodes[-1].out0], conv_1x1, {'M':random_orthog(channels_in)}))
 
-
+'''
+Define Haar downsampling sections of INN
+'''
 def _add_split_downsample(nodes, split, downsample, channels_in, channels):
     if downsample=='haar':
         nodes.append(Node([nodes[-1].out0], haar_multiplex_layer, {'rebalance':0.5, 'order_by_wavelet':True}, name='haar'))
@@ -116,6 +133,9 @@ def _add_fc_section(nodes):
 
     nodes.append(OutputNode([nodes[-1].out0], name='out'))
 
+'''
+Definition of INN using the above building blocks
+'''
 nodes = [InputNode(2, *c.img_dims, name='inp')]
 # 2x64x64 px
 _add_conditioned_section(nodes, depth=4, channels_in=2, channels=32, cond_level=0)
@@ -159,6 +179,10 @@ if c.load_inn_only:
     cinn.load_state_dict(torch.load(c.load_inn_only)['net'])
 
 import feature_net
+
+"""
+Conditioning network defined in feature_net.py
+"""
 efros_net = feature_net.KitModel(None)
 
 try:
@@ -171,8 +195,19 @@ except FileNotFoundError:
 efros_net.cuda()
 efros_net.class8_ab.state_dict()['weight'].copy_(torch.from_numpy(np.load('conditional_INNs/colorization_cINN/pts_in_hull.npy').T).view(2, 313, 1, 1))
 
-def prepare_batch(x):
 
+def prepare_batch(x):
+    '''
+    Prepare x_l, x_ab, cond and ab_pred from input image
+    Adds small offset to RGB value in order to improve training performance
+    Uses conditioning net to generate condition
+    x:        Nx3xWxH torch tensor
+    x_l: Nx1xWxH torch tensor
+    x_ab:Nx2xWxh torch tensor
+    cond: ?
+    ab_pred: ?   
+
+    '''
     net_feat = combined_model.module.feature_network
     net_inn  = combined_model.module.inn
     net_cond = combined_model.module.fc_cond_network
@@ -205,6 +240,9 @@ def prepare_batch(x):
 
     return x_l.detach(), x_ab.detach(), cond, ab_pred
 
+'''
+Wrap up INN, conditioning network and feature network in a single model
+'''
 class WrappedModel(nn.Module):
     def __init__(self, feature_network, fc_cond_network, inn):
         super().__init__()

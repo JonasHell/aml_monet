@@ -26,6 +26,7 @@ class dummy_loss(object):
     def item(self):
         return 1.
 
+#Sample latent space distribution to check on training progress
 def sample_outputs(sigma, out_shape):
     return [sigma * torch.cuda.FloatTensor(torch.Size((4, o))).normal_() for o in out_shape]
 
@@ -85,6 +86,9 @@ try:
         for i in range(len(epoch_losses)):
             epoch_losses[i] = min(epoch_losses[i], c.loss_display_cutoff)
 
+        #Load a training batch with 3 images
+        #Sample latent space using these images as condition
+        #Generate RGB images and display them
         with torch.no_grad():
             ims = []
             for x in data.test_loader:
