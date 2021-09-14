@@ -9,6 +9,15 @@ import cv2
 import albumentations
 
 """
+Implement dataset for pytorch dataloader that returns source images as well as condition images
+and create training and test dataloaders.
+
+Remember to:
+- Set correct paths to images
+- Adapt image size and data augmentation to your needs
+"""
+
+"""
 Custom dataset for holding photo + artistic rendering of photo pairs of RGB images
 Supports:
 -   rescaling images to desired size (128 pixels x 128 pixels by default)
