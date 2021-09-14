@@ -108,6 +108,18 @@ val_data  =  PairDataset(val_img_list, val_cond_list          , transform=False,
 train_loader = DataLoader(train_data,   batch_size=batch_size, shuffle=True,    num_workers=8,  pin_memory=True, drop_last=True)
 test_loader  = DataLoader(test_data,    batch_size=batch_size, shuffle=False,   num_workers=4,  pin_memory=True, drop_last=False)
 
+#Load all test and validation images and append them to a list
+#stack concatenates a sequence of tensors along a new dimension
+#list creates a list using the __get_item__ function
+x  = list(test_data)
+tx = list(zip(*x))
+test_img_all  = torch.stack(tx[0], 0).cuda()
+test_cond_all  = torch.stack(tx[1], 0).cuda()
+
+x  = list(val_data)
+tx = list(zip(*x))
+val_img_all  = torch.stack(tx[0], 0).cuda()
+val_cond_all  = torch.stack(tx[1], 0).cuda()
 """
 Mit den folgenden Zeilen kann man den Code testen und sich den Effekt der Data Augmentation für das Trainingsdatenset anschauen
 
