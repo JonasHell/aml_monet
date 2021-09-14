@@ -5,6 +5,7 @@ import torch
 import torch.optim
 import numpy as np
 
+import config as c
 import model
 import data
 
@@ -16,11 +17,11 @@ Remember to:
 - Set output directory for model
 """
 
-cinn = model.MonetCINN_256_blocks10_nosplit(1e-3)
+cinn = model.MonetCINN_256_blocks10_nosplit(c.lr)
 cinn.cuda()
 scheduler = torch.optim.lr_scheduler.StepLR(cinn.optimizer, 1, gamma=0.1)
 
-N_epochs = 10
+N_epochs = c.N_epochs
 t_start = time()
 nll_mean = []
 
@@ -66,4 +67,4 @@ for epoch in range(N_epochs):
             nll_mean = []
 
     scheduler.step()
-torch.save(cinn.state_dict(), f'output/monet_cinn.pt')
+torch.save(cinn.state_dict(), c.model_output)
