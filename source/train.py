@@ -6,7 +6,7 @@ import torch.optim
 import numpy as np
 
 import config as c
-import model
+import models
 import data
 
 """
@@ -17,7 +17,7 @@ Remember to:
 - Set output directory for model
 """
 
-cinn = model.MonetCINN_256_blocks10_nosplit(c.lr)
+cinn = models.MonetCINN_256_blocks10_nosplit(c.lr)
 cinn.cuda()
 scheduler = torch.optim.lr_scheduler.StepLR(cinn.optimizer, 1, gamma=0.1)
 
@@ -41,7 +41,7 @@ for epoch in range(N_epochs):
         z, log_j = cinn(source, condition)
 
         #Compute the loss of the INN
-        nll = torch.mean(z**2) / 2 - torch.mean(log_j) / model.ndim_total
+        nll = torch.mean(z**2) / 2 - torch.mean(log_j) / models.ndim_total
         nll.backward()
         nll_mean.append(nll.item())
         cinn.optimizer.step()
@@ -55,7 +55,7 @@ for epoch in range(N_epochs):
                 This needs to be adapted depending on the final architecture of the INN
                 """
                 z, log_j = cinn(data.val_img_all, data.val_cond_all)
-                nll_val = torch.mean(z**2) / 2 - torch.mean(log_j) / model.ndim_total
+                nll_val = torch.mean(z**2) / 2 - torch.mean(log_j) / models.ndim_total
 
             print('%.3i \t%.5i/%.5i \t%.2f \t%.6f\t%.6f\t%.2e' % (epoch,
                                                             i, len(data.train_loader),

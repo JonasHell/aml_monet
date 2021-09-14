@@ -23,24 +23,26 @@ N_val       = 64
 #######################
 
 #Root folder for dataset
-root = '/content/gdrive/MyDrive/Daniel-Daten/'
+data_root = '/content/gdrive/MyDrive/Daniel-Daten/'
 
 #The code expects the images in the training and test folders to be named real1.jpg, real2.jpg, ..., fake1.jpg, fake2.jpg, ...
-training_img_folder    =  root + 'cyclegan train/fake/'
-training_cond_folder   =  root + 'cyclegan train/real/'
-test_img_folder        =  root + 'cyclegan test/fake/' 
-test_cond_folder       =  root + 'cyclegan test/real/'
+training_img_folder    =  data_root + 'cyclegan train/fake/'
+training_cond_folder   =  data_root + 'cyclegan train/real/'
+test_img_folder        =  data_root + 'cyclegan test/fake/' 
+test_cond_folder       =  data_root + 'cyclegan test/real/'
 
 ########################
 # Display and logging: #
 ########################
 
+output_root = '/content/gdrive/MyDrive/CINN/'
+output_image_folder     = output_root + 'images'
 
 #######################
 # Saving checkpoints: #
 #######################
 
 #This is where the training algorithm stores the model
-model_output = f'output/monet_cinn.pt'
+model_output = output_root + 'monet_cinn.pt'
 #This is where the evaluation algorithm reas the model from
 model_path   = model_output
