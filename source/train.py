@@ -1,6 +1,7 @@
+# %%
 from time import time
 
-from tqdm import tqdm
+#from tqdm import tqdm
 import torch
 import torch.optim
 import numpy as np
@@ -17,7 +18,7 @@ Remember to:
 - Set output directory for model
 """
 
-cinn = models.MonetCINN_256_blocks10_nosplit(c.lr)
+cinn = models.MonetCINN_112_blocks10(c.lr)
 cinn.cuda()
 scheduler = torch.optim.lr_scheduler.StepLR(cinn.optimizer, 1, gamma=0.1)
 
@@ -68,3 +69,5 @@ for epoch in range(N_epochs):
 
     scheduler.step()
 torch.save(cinn.state_dict(), c.model_output)
+
+# %%

@@ -13,12 +13,6 @@ class ConditionNet(nn.Module):
     def __ini__(self):
         super().__init__()
 
-        class Flatten(nn.Module):
-            def __init__(self, *args):
-                super().__init__()
-            def forward(self, x):
-                return x.view(x.shape[0], -1)
-
         self.modules = nn.ModuleList([
             nn.Sequential(
                 # 3 x 224 x 224
@@ -97,6 +91,7 @@ class MonetCINN_112_blocks10(nn.Module):
         super().__init__()
 
         self.cinn = self.create_cinn()
+        self.cond_net = ConditionNet()
 
     def create_cinn(self):
     
@@ -120,7 +115,7 @@ class MonetCINN_112_blocks10(nn.Module):
                 nn.Linear(hidden_channels_2, out_channels)
             )
 
-        def add_stage(nodes, block_num, subnet_func, condition=None, split_nodes=None, split_sizes=[1, 1], downsample=True, prefix=''):
+        def add_stage(nodes, block_num, subnet_func, condition=None, split_nodes=None, split_sizes=None, downsample=True, prefix=''):
             """
             Convenience function that adds an entire stage to nodes.
             """
@@ -131,7 +126,7 @@ class MonetCINN_112_blocks10(nn.Module):
                 subnet = subnet_func(block_num)
                 
                 # add current block
-                nodes.append(Ff.node(
+                nodes.append(Ff.Node(
                     nodes[-1],
                     Fm.GLOWCouplingBlock,
                     {'subnet_constructor': subnet, 'clamp': 2.0},
@@ -146,13 +141,13 @@ class MonetCINN_112_blocks10(nn.Module):
                     {},
                     name=prefix+f'-block{k+1}-perm'
                 ))
-
+            print(nodes[-1])
             # split channels off
             if split_nodes is not None:
                 nodes.append(Ff.Node(
                     nodes[-1],
-                    Fm.Split1D,
-                    {'split_size_or_sections':split_sizes, 'dim':0},
+                    Fm.Split,
+                    {'section_sizes': split_sizes, 'dim': 0},
                     name=prefix+'split'
                 ))
                 split_nodes.append(Ff.Node(
@@ -167,7 +162,7 @@ class MonetCINN_112_blocks10(nn.Module):
                 nodes.append(Ff.Node(
                     nodes[-1],
                     Fm.HaarDownsampling,
-                    {'rebalance':0.5},
+                    {'rebalance': 0.5},
                     name=prefix+'-down'
                 ))
             
@@ -226,15 +221,16 @@ class MonetCINN_112_blocks10(nn.Module):
         )
         #TODO: does it make sense to increase num of channels in subnets?
         #TODO: should they be larger in the beginning due to condition
-
+        print(nodes[-1])
         # stage 5
         # two blocks (96 x 7 x 7)
         # one with conv1 and one with conv3 subnet
         subnet_func = lambda block_num: subnet_conv(128, 256, 3 if block_num%2 else 1)
         add_stage(nodes, 2, subnet_func,
             condition=condition_nodes[4],
+            downsample=False,
             split_nodes=split_nodes,
-            split_sizes=[1, 3],
+            split_sizes=[24, 72],
             prefix='stage5'
         )
 
@@ -255,18 +251,18 @@ class MonetCINN_112_blocks10(nn.Module):
             downsample=False,
             prefix='stage6'
         )
-
+        print(nodes[-1])
         # concat all the splits and the output of fc part
         nodes.append(Ff.Node(
             [sn.out0 for sn in split_nodes] + [nodes[-1].out0],
-            Fm.Concat1d,
+            Fm.Concat,
             {'dim':0},
             name='concat'
         ))
-
+        print(nodes[-1])
         # add output node
         nodes.append(Ff.OutputNode(nodes[-1], name='output'))
-
+        print(nodes[-1])
         #TODO: use GraphINN or ReversibleGraphNet??
         return Ff.ReversibleGraphNet(nodes + split_nodes + condition_nodes)
 

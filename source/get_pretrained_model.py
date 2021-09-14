@@ -21,3 +21,9 @@ vgg11_nobn = models.vgg11(pretrained=True)
 
 # %%
 vgg11_nobn.modules
+
+# %%
+import models
+cinn = models.MonetCINN_112_blocks10(0.001)
+
+# %%
