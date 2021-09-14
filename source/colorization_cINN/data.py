@@ -58,6 +58,8 @@ def norm_lab_to_rgb(L, ab, norm=True, filt=False, bw=False):
     rgb = [color.lab2rgb(np.transpose(l, (1, 2, 0))).transpose(2, 0, 1) for l in lab]
     return np.array(rgb)
 
+#Prototype dataset for both training and test images
+#Performs data augmentation via transform argument
 class LabColorDataset(Dataset):
     def __init__(self, file_list, transform=None):
 
@@ -97,6 +99,7 @@ transf =      T.Compose([T.RandomHorizontalFlip(),
 transf_test = T.Compose([T.Resize(c.img_dims_orig[0]),
                          T.CenterCrop(c.img_dims_orig[0])])
 
+#Load images from text files with names of image files
 if c.dataset == 'imagenet':
     with open('conditional_INNs/colorization_cINN/imagenet/training_images.txt') as f:
         train_list = [join('/content/gdrive/MyDrive/Daniel-Daten/cyclegan test/real', fname[2:]) for fname in f.read().splitlines()]
@@ -118,6 +121,8 @@ test_data  = LabColorDataset(test_list, transf_test)
 train_loader = DataLoader(train_data, batch_size=c.batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
 test_loader = DataLoader(test_data,  batch_size=min(64, len(test_list)), shuffle=c.shuffle_val, num_workers=4, pin_memory=True, drop_last=False)
 
+#This shows the RGB images after data augmentation and down and upsampling
+#Currently broken because model is not defined
 if __name__ == '__main__':
     # Determine mean and standard deviation of RGB channels
     # (i.e. set global variables scale and offsets to 1., then use the results as new scale and offset)

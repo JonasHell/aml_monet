@@ -16,6 +16,9 @@ def load_weights(weight_file):
 
     return weights_dict
 
+'''
+Conditioning Network
+'''
 class KitModel(nn.Module):
 
 
