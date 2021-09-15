@@ -108,15 +108,17 @@ class ConditionNet(nn.Module):
             #print(f"Output size: {outputs[-1].size()}")
         return outputs[1:]
 
-    def initialize_pretrained(self):
+    def initialize_pretrained(self, pretrained_path):
         # set where the downloaded model should be saved
-        torch.hub.set_dir(c.vgg11_path)
+        torch.hub.set_dir(pretrained_path)
+        #torch.hub.set_dir(c.vgg11_path)
 
         # download model if not already done
         torchvision.models.vgg11(pretrained=True)
 
         # load pretrained weights and biases
-        pretrained_dict = torch.load(c.vgg11_path+'/checkpoints/vgg11-8a719046.pth')
+        pretrained_dict = torch.load(pretrained_path+'/checkpoints/vgg11-8a719046.pth')
+        #pretrained_dict = torch.load(c.vgg11_path+'/checkpoints/vgg11-8a719046.pth')
         pretrained_keys = list(pretrained_dict.keys())
 
         # initialize with pretrained weights and biases
@@ -129,14 +131,14 @@ class ConditionNet(nn.Module):
         
 
 class MonetCINN_112_blocks10(nn.Module):
-    def __init__(self, learning_rate):
+    def __init__(self, learning_rate, pretrained_path=os.getcwd()):
         super().__init__()
 
         self.cinn = self.create_cinn()
         self.initialize_weights()
 
         self.cond_net = ConditionNet()
-        self.cond_net.initialize_pretrained()
+        self.cond_net.initialize_pretrained(pretrained_path)
 
         self.trainable_parameters = [p for p in self.cinn.parameters() if p.requires_grad]
         self.optimizer = torch.optim.Adam(self.trainable_parameters, lr=learning_rate, betas=c.betas, eps=1e-6, weight_decay=c.weight_decay)
@@ -198,12 +200,14 @@ class MonetCINN_112_blocks10(nn.Module):
                     {'section_sizes': split_sizes, 'dim': 0},
                     name=prefix+'split'
                 ))
+                
                 split_nodes.append(Ff.Node(
                     nodes[-1].out1,
                     Fm.Flatten,
                     {},
                     name=prefix+'flatten'
                 ))
+                
 
             # add downsampling at the end of stage
             if downsample:
@@ -313,6 +317,10 @@ class MonetCINN_112_blocks10(nn.Module):
         #print(nodes[-1])
         #TODO: use GraphINN or ReversibleGraphNet??
         return Ff.ReversibleGraphNet(nodes + split_nodes + condition_nodes)
+        #return Ff.GraphINN(nodes + split_nodes + condition_nodes)
+
+        # problem für bericht: beim erstellen der graphen gibt es eine randomness, beim erstellen des graphen,
+        # schwierig beim speichern und laden mit state_dict(), da die namen der parameter vond er reihenfogle bahängen
 
     def forward(self, monet, photo):
         return self.cinn(monet, c=self.cond_net(photo), jac=True)

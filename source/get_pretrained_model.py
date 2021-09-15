@@ -1,4 +1,5 @@
 # %%
+from source.models import MonetCINN_112_blocks10
 import torchvision.models as models
 
 # %%
@@ -72,3 +73,44 @@ cinn.initialize_weights()
 # %%
 for idx, m in enumerate(cinn.modules()):
     print(idx, '->', m)
+
+# %%
+import torch
+from models import MonetCINN_112_blocks10
+
+pretrained_path = 'C:/Users/Jonas/.cache/torch/hub'
+
+net = MonetCINN_112_blocks10(0.01, pretrained_path)
+torch.save(net.state_dict(), 'checkpoint.pt')
+
+state_dict_loaded = torch.load('checkpoint.pt')
+net_loaded = MonetCINN_112_blocks10(0.01, pretrained_path)
+net_loaded.load_state_dict(state_dict_loaded)
+
+# %%
+import torch
+from models import MonetCINN_112_blocks10
+
+pretrained_path = 'C:/Users/Jonas/.cache/torch/hub'
+
+net1 = MonetCINN_112_blocks10(0.01, pretrained_path)
+print(net1.state_dict().keys())
+
+# %%
+net2 = MonetCINN_112_blocks10(0.01, pretrained_path)
+print(net2.state_dict().keys())
+
+# %%
+net3 = MonetCINN_112_blocks10(0.01, pretrained_path)
+print(net3.state_dict().keys())
+
+# %%
+net4 = MonetCINN_112_blocks10(0.01, pretrained_path)
+print(net4.state_dict().keys())
+
+# %%
+# %%
+net5 = MonetCINN_112_blocks10(0.01, pretrained_path)
+print(net5.state_dict().keys())
+
+# %%
