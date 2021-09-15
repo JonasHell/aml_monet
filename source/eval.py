@@ -27,11 +27,10 @@ def style_transfer_test_set(temp=1., postfix=0, img_folder=c.image_folder):
     counter = 0
     with torch.no_grad():
         for images in tqdm(data.test_loader):
-            #source    = images[0].cuda()
             condition = images[1].cuda()
             z = temp * torch.randn(condition.shape[0], models.ndim_total).cuda()
 
-            styles = cinn.reverse_sample(z, condition)
+            styles = cinn.reverse_sample(z, condition).cpu().numpy()
 
             for im in styles:
                 im = np.transpose(im, (1,2,0))
@@ -48,7 +47,7 @@ def best_of_n(n):
     with torch.no_grad():
         errs_batches = []
         for images in tqdm(data.test_loader, disable=True):
-            ground_truth    = images[0].cuda()
+            ground_truth    = images[0]
             condition       = images[1].cuda()
 
             B = ground_truth.shape[0] # batch_size
@@ -60,7 +59,7 @@ def best_of_n(n):
                 #Randomly sample latent space
                 z = torch.randn(B, models.ndim_total).cuda() 
                 #Create image using condition and random latent space sample
-                reconstruction = cinn.reverse_sample(z, condition).reshape(B, -1)
+                reconstruction = cinn.reverse_sample(z, condition).reshape(B, -1).cpu().numpy()
                 #Compute vector with length batch_size to quantify how well sampling did compared to ground truth
                 errs_k = np.mean((ground_truth - reconstruction)**2, axis=1)
                 errs = np.minimum(errs, errs_k)

@@ -20,7 +20,7 @@ Remember to:
 """
 Custom dataset for holding photo + artistic rendering of photo pairs of RGB images
 Supports:
--   rescaling images to desired size (128 pixels x 128 pixels by default)
+-   cropping images to desired size (128 pixels x 128 pixels by default)
 -   normalising images
 -   data augmentation
 -   adding noise to training data
@@ -32,7 +32,7 @@ Returns:
 class PairDataset(Dataset):
 
   #Resize dataset, normalise data and augment if is_valid = 0
-  def __init__(self, image_paths, condition_paths,  transform = True, noise = False, img_height = c.img_width, img_width = c.img_height, mean = (0, 0, 0), std  = (1, 1, 1)):
+  def __init__(self, image_paths, condition_paths,  transform = True, noise = False, img_height = c.img_height, img_width = c.img_width, mean = (0, 0, 0), std  = (1, 1, 1)):
     self.image_paths        = image_paths
     self.condition_paths    = condition_paths
     #Check whether there is the same number of images and condition
@@ -45,13 +45,13 @@ class PairDataset(Dataset):
 
     if self.transform == False:
       self.aug = albumentations.Compose([
-                                         albumentations.Resize(img_height, img_width, always_apply = True),
+                                         albumentations.CenterCrop(img_height, img_width, always_apply = True),
                                          albumentations.Normalize(mean, std, always_apply = True)
       ])
     else:
       #Apply affine transformations to scale, shift and rotate input images
       self.aug = albumentations.Compose([
-                                         albumentations.Resize(img_height, img_width, always_apply = True),
+                                         albumentations.RandomCrop(img_height, img_width, always_apply = True),
                                          albumentations.Normalize(mean, std, always_apply = True),
                                          albumentations.ShiftScaleRotate(shift_limit = 0.0625, 
                                                                          scale_limit = 0.1, 

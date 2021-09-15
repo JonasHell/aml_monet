@@ -3,6 +3,7 @@
 #################
 img_width  = 128
 img_height = 128
+ndim_total = 3*img_width*img_width
 
 #############################
 # Training hyperparameters: #

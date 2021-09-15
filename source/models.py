@@ -10,10 +10,10 @@ import FrEIA.modules as Fm
 # %%
 
 class ConditionNet(nn.Module):
-    def __ini__(self):
+    def __init__(self):
         super().__init__()
 
-        self.modules = nn.ModuleList([
+        self.res_blocks = nn.ModuleList([
             nn.Sequential(
                 # 3 x 224 x 224
                 nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
@@ -77,7 +77,7 @@ class ConditionNet(nn.Module):
         
     def forward(self, photo):
         outputs = [photo]
-        for module in self.modules:
+        for module in self.res_blocks:
             outputs.append(module(outputs[-1]))
         return outputs[1:]
 
@@ -92,6 +92,13 @@ class MonetCINN_112_blocks10(nn.Module):
 
         self.cinn = self.create_cinn()
         self.cond_net = ConditionNet()
+
+        self.trainable_parameters = [p for p in self.cinn.parameters() if p.requires_grad]
+        for p in self.trainable_parameters:
+            p.data = 0.02 * torch.randn_like(p)
+
+        self.trainable_parameters += list(self.cond_net.parameters())
+        self.optimizer = torch.optim.Adam(self.trainable_parameters, lr=learning_rate)
 
     def create_cinn(self):
     
