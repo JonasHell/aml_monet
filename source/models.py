@@ -110,17 +110,17 @@ class ConditionNet(nn.Module):
 
     def initialize_pretrained(self):
         # set where the downloaded model should be saved
-        torch.hub.set_dir(os.getcwd())
+        torch.hub.set_dir(c.vgg11_path)
 
         # download model if not already done
         torchvision.models.vgg11(pretrained=True)
 
         # load pretrained weights and biases
-        pretrained_dict = torch.load(os.getcwd()+'/checkpoints/vgg11-8a719046.pth')
+        pretrained_dict = torch.load(c.vgg11_path+'/checkpoints/vgg11-8a719046.pth')
         pretrained_keys = list(pretrained_dict.keys())
 
         # initialize with pretrained weights and biases
-        for i, (key, param) in enumerate(self.named_pameters()):
+        for i, (key, param) in enumerate(self.named_parameters()):
             param.data = pretrained_dict[pretrained_keys[i]]
 
     # evtl auch möglich:
