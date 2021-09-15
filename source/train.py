@@ -40,7 +40,8 @@ for epoch in range(N_epochs):
         """
         z, log_j = cinn(source, condition)
 
-        #Compute the loss of the INN
+        #Compute the loss of the INN, z is batch size x 3*img_size**2 array whereas log_j is batch size array
+        #This is why we need to divide torch.mean(log_j) by 3*img_size**2 separately
         nll = torch.mean(z**2) / 2 - torch.mean(log_j) / c.ndim_total
         nll.backward()
         nll_mean.append(nll.item())

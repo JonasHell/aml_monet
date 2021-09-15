@@ -6,7 +6,7 @@ import torch
 img_size  = 112
 cond_size = 224
 
-ndim_total = 2 * 64 * 64
+ndim_total = 3 * 112 * 112
 
 #############################
 # Training hyperparameters: #

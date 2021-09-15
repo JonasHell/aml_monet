@@ -109,8 +109,8 @@ test_data  = PairDataset(test_img_list, test_cond_list        , transform=False,
 val_data  =  PairDataset(val_img_list, val_cond_list          , transform=False, noise=False)
 
 
-train_loader = DataLoader(train_data,   batch_size=c.batch_size, shuffle=True,    num_workers=8,  pin_memory=True, drop_last=True)
-test_loader  = DataLoader(test_data,    batch_size=c.batch_size, shuffle=False,   num_workers=4,  pin_memory=True, drop_last=False)
+train_loader = DataLoader(train_data,   batch_size=c.batch_size, shuffle=True,    num_workers=2,  pin_memory=True, drop_last=True)
+test_loader  = DataLoader(test_data,    batch_size=c.batch_size, shuffle=False,   num_workers=2,  pin_memory=True, drop_last=False)
 
 #Load all test and validation images and append them to a list
 #stack concatenates a sequence of tensors along a new dimension
