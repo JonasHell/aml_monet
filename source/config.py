@@ -56,8 +56,9 @@ output_image_folder     = output_root + 'images/'
 checkpoint_save_interval = 10   #in epochs
 checkpoint_save_overwrite = True #Checkpoints are overwritten if set to True
 
+vgg11_path              = output_root + 'vgg11/'
 output_model_folder     = output_root + 'model/'
 #This is where the training algorithm stores the model
 model_output = output_model_folder + 'monet_cinn.pt'
 #This is where the evaluation algorithm reas the model from
-model_path   = model_output
+model_path   = output_model_folder + 'monet_cinn.pt'
