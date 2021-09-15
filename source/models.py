@@ -11,7 +11,6 @@ import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 import config as c
 # %%
-ndim_total = 3*(c.img_size**2 + c.cond_size**2)
 
 """
             We are in layer 0
@@ -140,11 +139,7 @@ class MonetCINN_112_blocks10(nn.Module):
         self.cond_net.initialize_pretrained()
 
         self.trainable_parameters = [p for p in self.cinn.parameters() if p.requires_grad]
-        for p in self.trainable_parameters:
-            p.data = 0.02 * torch.randn_like(p)
-
-        self.trainable_parameters += list(self.cond_net.parameters())
-        self.optimizer = torch.optim.Adam(self.trainable_parameters, lr=learning_rate)
+        self.optimizer = torch.optim.Adam(self.trainable_parameters, lr=learning_rate, betas=c.betas, eps=1e-6, weight_decay=c.weight_decay)
 
     def create_cinn(self):
     

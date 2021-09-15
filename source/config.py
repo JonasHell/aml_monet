@@ -27,6 +27,9 @@ if torch.cuda.is_available():
 else:
     device = 'cpu'
     
+weight_decay = 1e-5
+betas = (0.9, 0.999)                # concerning adam optimizer
+
 #######################
 # Dataset parameters: #
 #######################
@@ -50,7 +53,7 @@ output_image_folder     = output_root + 'images/'
 #######################
 # Saving checkpoints: #
 #######################
-checkpoint_save_interval = 10 #in epochs
+checkpoint_save_interval = 10   #in epochs
 checkpoint_save_overwrite = True #Checkpoints are overwritten if set to True
 
 output_model_folder     = output_root + 'model/'
