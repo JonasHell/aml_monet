@@ -6,12 +6,33 @@ import torch.optim
 
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
-
+import config as c
 # %%
+ndim_total = 3*(c.img_size**2 + c.cond_size**2)
+
+"""
+            We are in layer 0
+Output size: torch.Size([16, 128, 112, 112])
+We are in layer 1
+Output size: torch.Size([16, 256, 56, 56])
+We are in layer 2
+Output size: torch.Size([16, 512, 28, 28])
+We are in layer 3
+Output size: torch.Size([16, 512, 14, 14])
+We are in layer 4
+Output size: torch.Size([16, 512, 7, 7])
+We are in layer 5
+"""
 
 class ConditionNet(nn.Module):
     def __init__(self):
         super().__init__()
+
+        class Flatten(nn.Module):
+            def __init__(self, *args):
+                super().__init__()
+            def forward(self, x):
+                return x.view(x.shape[0], -1)
 
         self.res_blocks = nn.ModuleList([
             nn.Sequential(
@@ -22,7 +43,7 @@ class ConditionNet(nn.Module):
                 nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False),
                 # 64 x 112 x 112
                 nn.Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-                # 128 x 112 x 112
+                # 128 x 112 x 112, correct :)
             ),
             nn.Sequential(
                 nn.ReLU(inplace=True),
@@ -32,7 +53,7 @@ class ConditionNet(nn.Module):
                 # 256 x 56 x 56
                 nn.ReLU(inplace=True),
                 nn.Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-                # 256 x 56 x 56
+                # 256 x 56 x 56, correct :)
             ),
             nn.Sequential(
                 nn.ReLU(inplace=True),
@@ -42,7 +63,7 @@ class ConditionNet(nn.Module):
                 # 512 x 28 x 28
                 nn.ReLU(inplace=True),
                 nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-                # 512 x 28 x 28
+                # 512 x 28 x 28, correct :)
             ),
             nn.Sequential(
                 nn.ReLU(inplace=True),
@@ -52,16 +73,18 @@ class ConditionNet(nn.Module):
                 # 512 x 14 x 14
                 nn.ReLU(inplace=True),
                 nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-                # 512 x 14 x 14
+                # 512 x 14 x 14, correct :)
             ),
             nn.Sequential(
                 nn.ReLU(inplace=True),
                 nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
-                # 512 x 7 x 7
+                # 512 x 7 x 7, correct :)
             ),
             nn.Sequential(
                 nn.AdaptiveAvgPool2d(output_size=(7, 7)),
-                # 25088
+                
+                Flatten(),
+                # 512 x 7 x 7
                 nn.Linear(in_features=25088, out_features=4096, bias=True),
                 # 4096
                 nn.ReLU(inplace=True),
@@ -77,8 +100,10 @@ class ConditionNet(nn.Module):
         
     def forward(self, photo):
         outputs = [photo]
-        for module in self.res_blocks:
+        for i, module in enumerate(self.res_blocks):
+            #print(f"We are in layer {i}")
             outputs.append(module(outputs[-1]))
+            #print(f"Output size: {outputs[-1].size()}")
         return outputs[1:]
 
     # evtl auch möglich:
@@ -148,7 +173,7 @@ class MonetCINN_112_blocks10(nn.Module):
                     {},
                     name=prefix+f'-block{k+1}-perm'
                 ))
-            print(nodes[-1])
+            #print(nodes[-1])
             # split channels off
             if split_nodes is not None:
                 nodes.append(Ff.Node(
@@ -228,7 +253,7 @@ class MonetCINN_112_blocks10(nn.Module):
         )
         #TODO: does it make sense to increase num of channels in subnets?
         #TODO: should they be larger in the beginning due to condition
-        print(nodes[-1])
+        #print(nodes[-1])
         # stage 5
         # two blocks (96 x 7 x 7)
         # one with conv1 and one with conv3 subnet
@@ -258,7 +283,7 @@ class MonetCINN_112_blocks10(nn.Module):
             downsample=False,
             prefix='stage6'
         )
-        print(nodes[-1])
+        #print(nodes[-1])
         # concat all the splits and the output of fc part
         nodes.append(Ff.Node(
             [sn.out0 for sn in split_nodes] + [nodes[-1].out0],
@@ -266,17 +291,15 @@ class MonetCINN_112_blocks10(nn.Module):
             {'dim':0},
             name='concat'
         ))
-        print(nodes[-1])
+        #print(nodes[-1])
         # add output node
         nodes.append(Ff.OutputNode(nodes[-1], name='output'))
-        print(nodes[-1])
+        #print(nodes[-1])
         #TODO: use GraphINN or ReversibleGraphNet??
         return Ff.ReversibleGraphNet(nodes + split_nodes + condition_nodes)
 
     def forward(self, monet, photo):
-        z = self.cinn(monet, c=self.cond_net(photo))
-        jac = self.cinn.log_jacobian(run_forward=False)
-        return z, jac
+        return self.cinn(monet, c=self.cond_net(photo), jac=True)
 
     def reverse_sample(self, z, photo):
         return self.cinn(z, c=self.cond_net(photo), rev=True)

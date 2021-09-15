@@ -1,24 +1,32 @@
+import torch
+
 #################
 # Architecture: #
 #################
-img_width  = 128
-img_height = 128
-ndim_total = 3*img_width*img_width
+img_size  = 112
+cond_size = 224
+
+ndim_total = 2 * 64 * 64
 
 #############################
 # Training hyperparameters: #
 #############################
 N_epochs    = 10
 lr          = 1e-3
-batch_size  = 128
+batch_size  = 16
 
 #Total number of images used for training
-N_train     = 512
+N_train     = 64
 
 #We take the first N_test images from the test dataset for validation and the N_val images after that for validation
-N_test      = 128
+N_test      = 64
 N_val       = 64
 
+if torch.cuda.is_available():
+    device = 'cuda'
+else:
+    device = 'cpu'
+    
 #######################
 # Dataset parameters: #
 #######################

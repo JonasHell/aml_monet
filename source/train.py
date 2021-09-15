@@ -1,4 +1,3 @@
-# %%
 from time import time
 
 #from tqdm import tqdm
@@ -19,7 +18,7 @@ Remember to:
 """
 
 cinn = models.MonetCINN_112_blocks10(c.lr)
-cinn.cuda()
+cinn.to(c.device)
 scheduler = torch.optim.lr_scheduler.StepLR(cinn.optimizer, 1, gamma=0.1)
 
 N_epochs = c.N_epochs
@@ -32,8 +31,8 @@ for epoch in range(N_epochs):
         #train_loader returns a list with two elements
         #Both elements are torch tensors with size (batch_size x 3 (RGB channels) x image width x image height)
         #We immediately load every batch of source and condition images to the GPU
-        source    = images[0].cuda()
-        condition = images[1].cuda()
+        source    = images[0].to(c.device)
+        condition = images[1].to(c.device)
 
         #We pass both the source image as well as the condition image to the INN
         """
