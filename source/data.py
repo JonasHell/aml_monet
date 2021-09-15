@@ -20,7 +20,7 @@ Remember to:
 """
 Custom dataset for holding photo + artistic rendering of photo pairs of RGB images
 Supports:
--   rescaling images to desired size (128 pixels x 128 pixels by default)
+-   cropping images to desired size (128 pixels x 128 pixels by default)
 -   normalising images
 -   data augmentation
 -   adding noise to training data
@@ -32,26 +32,39 @@ Returns:
 class PairDataset(Dataset):
 
   #Resize dataset, normalise data and augment if is_valid = 0
-  def __init__(self, image_paths, condition_paths,  transform = True, noise = False, img_height = c.img_width, img_width = c.img_height, mean = (0, 0, 0), std  = (1, 1, 1)):
+  def __init__(self, image_paths, condition_paths,  transform = True, noise = False, img_size = c.img_size, cond_size = c.cond_size, mean = (0, 0, 0), std  = (1, 1, 1)):
     self.image_paths        = image_paths
     self.condition_paths    = condition_paths
     #Check whether there is the same number of images and condition
     assert(len(image_paths) == len(condition_paths))
-    self.img_height         = img_height
-    self.img_width          = img_width
+    self.img_size           = img_size
+    self.cond_size          = cond_size
     self.transform          = transform
     self.noise              = noise
 
 
     if self.transform == False:
-      self.aug = albumentations.Compose([
-                                         albumentations.Resize(img_height, img_width, always_apply = True),
+      self.img_aug = albumentations.Compose([
+                                         albumentations.Resize(img_size, img_size, always_apply = True),
+                                         albumentations.Normalize(mean, std, always_apply = True)
+      ])
+      self.cond_aug = albumentations.Compose([
+                                         albumentations.Resize(cond_size, cond_size, always_apply = True),
                                          albumentations.Normalize(mean, std, always_apply = True)
       ])
     else:
       #Apply affine transformations to scale, shift and rotate input images
-      self.aug = albumentations.Compose([
-                                         albumentations.Resize(img_height, img_width, always_apply = True),
+      self.img_aug = albumentations.Compose([
+                                         albumentations.Resize(img_size, img_size, always_apply = True),
+                                         albumentations.Normalize(mean, std, always_apply = True),
+                                         albumentations.ShiftScaleRotate(shift_limit = 0.0625, 
+                                                                         scale_limit = 0.1, 
+                                                                         rotate_limit = 5,
+                                                                         p = 0.9)
+      ])
+      #Apply affine transformations to scale, shift and rotate input images
+      self.cond_aug = albumentations.Compose([
+                                         albumentations.Resize(cond_size, cond_size, always_apply = True),
                                          albumentations.Normalize(mean, std, always_apply = True),
                                          albumentations.ShiftScaleRotate(shift_limit = 0.0625, 
                                                                          scale_limit = 0.1, 
@@ -62,29 +75,24 @@ class PairDataset(Dataset):
   def __len__(self):
     return len(self.image_paths)
 
-  def get_image(self, filename):
-    #Open image and convert to numpy array 
-    img = np.array(Image.open(filename))
-    
-    #Resize to desired size and interpolate if necessary
-    #Normalise and apply data augmentation
-    #img = cv2.resize(img, dsize=(self.img_width, self.img_height), interpolation = cv2.INTER_CUBIC)
-    img = self.aug(image = img)["image"]
-
-    #Convert back to pytorch data structure
-    img = np.transpose(img, (2,0,1)).astype(np.float32) # changing format s.t. pytorch will accept it
-    img = torch.tensor(img, dtype = torch.float)
-
-    #Add noise to improve training performance
-    if self.noise:
-        img += 0.005 * torch.rand_like(img)
-
-    return img
-
   #Return tuple of image and its condition (another image)
   def __getitem__(self, index):
-    image = self.get_image(self.image_paths[index])
-    condition = self.get_image(self.condition_paths[index])
+    #Open image and convert to numpy array 
+    image = np.array(Image.open(self.image_paths[index]))
+    image = self.img_aug(image = image)["image"]
+    image = np.transpose(image, (2,0,1)).astype(np.float32)
+    image = torch.tensor(image, dtype = torch.float)
+    if self.noise:
+        image += 0.005 * torch.rand_like(image)
+
+    #Open image and convert to numpy array 
+    condition = np.array(Image.open(self.condition_paths[index]))
+    condition = self.cond_aug(image = condition)["image"]
+    condition = np.transpose(condition, (2,0,1)).astype(np.float32)
+    condition = torch.tensor(condition, dtype = torch.float)
+    if self.noise:
+        condition += 0.005 * torch.rand_like(condition)
+
     return image, condition
 
 
@@ -101,30 +109,18 @@ test_data  = PairDataset(test_img_list, test_cond_list        , transform=False,
 val_data  =  PairDataset(val_img_list, val_cond_list          , transform=False, noise=False)
 
 
-train_loader = DataLoader(train_data,   batch_size=c.batch_size, shuffle=True,    num_workers=8,  pin_memory=True, drop_last=True)
-test_loader  = DataLoader(test_data,    batch_size=c.batch_size, shuffle=False,   num_workers=4,  pin_memory=True, drop_last=False)
+train_loader = DataLoader(train_data,   batch_size=c.batch_size, shuffle=True,    num_workers=2,  pin_memory=True, drop_last=True)
+test_loader  = DataLoader(test_data,    batch_size=c.batch_size, shuffle=False,   num_workers=2,  pin_memory=True, drop_last=False)
 
 #Load all test and validation images and append them to a list
 #stack concatenates a sequence of tensors along a new dimension
 #list creates a list using the __get_item__ function
 x  = list(test_data)
 tx = list(zip(*x))
-test_img_all  = torch.stack(tx[0], 0).cuda()
-test_cond_all  = torch.stack(tx[1], 0).cuda()
+test_img_all  = torch.stack(tx[0], 0).to(c.device)
+test_cond_all  = torch.stack(tx[1], 0).to(c.device)
 
 x  = list(val_data)
 tx = list(zip(*x))
-val_img_all  = torch.stack(tx[0], 0).cuda()
-val_cond_all  = torch.stack(tx[1], 0).cuda()
-"""
-Mit den folgenden Zeilen kann man den Code testen und sich den Effekt der Data Augmentation für das Trainingsdatenset anschauen
-
-import matplotlib.pyplot as plt
-%matplotlib inline
-id = 64
-img1, img2 = test_data[id]
-plt.imshow(np.transpose(img1.numpy(), (1, 2, 0)))
-plt.imshow(np.transpose(img2.numpy(), (1, 2, 0)))
-
-
-"""
+val_img_all  = torch.stack(tx[0], 0).to(c.device)
+val_cond_all  = torch.stack(tx[1], 0).to(c.device)
