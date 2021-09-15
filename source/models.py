@@ -319,6 +319,9 @@ class MonetCINN_112_blocks10(nn.Module):
         return Ff.ReversibleGraphNet(nodes + split_nodes + condition_nodes)
         #return Ff.GraphINN(nodes + split_nodes + condition_nodes)
 
+        # problem für bericht: beim erstellen der graphen gibt es eine randomness, beim erstellen des graphen,
+        # schwierig beim speichern und laden mit state_dict(), da die namen der parameter vond er reihenfogle bahängen
+
     def forward(self, monet, photo):
         return self.cinn(monet, c=self.cond_net(photo), jac=True)
 
