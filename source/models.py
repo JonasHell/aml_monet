@@ -1,8 +1,11 @@
 # %%
+import os
+
 import torch
 import torch.nn as nn
 from torch.nn.modules.activation import ReLU
 import torch.optim
+import torchvision
 
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
@@ -10,10 +13,10 @@ import FrEIA.modules as Fm
 # %%
 
 class ConditionNet(nn.Module):
-    def __ini__(self):
+    def __init__(self):
         super().__init__()
 
-        self.modules = nn.ModuleList([
+        self.resolution_levels = nn.ModuleList([
             nn.Sequential(
                 # 3 x 224 x 224
                 nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
@@ -77,9 +80,24 @@ class ConditionNet(nn.Module):
         
     def forward(self, photo):
         outputs = [photo]
-        for module in self.modules:
-            outputs.append(module(outputs[-1]))
+        for level in self.resolution_levels:
+            outputs.append(level(outputs[-1]))
         return outputs[1:]
+
+    def initialize_pretrained(self):
+        # set where the downloaded model should be saved
+        torch.hub.set_dir(os.getcwd())
+
+        # download model if not already done
+        torchvision.models.vgg11(pretrained=True)
+
+        # load pretrained weights and biases
+        pretrained_dict = torch.load(os.getcwd()+'/checkpoints/vgg11-8a719046.pth')
+        pretrained_keys = list(pretrained_dict.keys())
+
+        # initialize with pretrained weights and biases
+        for i, (key, param) in enumerate(self.named_pameters()):
+            param.data = pretrained_dict[pretrained_keys[i]]
 
     # evtl auch möglich:
     # https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
@@ -91,7 +109,10 @@ class MonetCINN_112_blocks10(nn.Module):
         super().__init__()
 
         self.cinn = self.create_cinn()
+        self.initialize_weights()
+
         self.cond_net = ConditionNet()
+        self.cond_net.initialize_pretrained()
 
     def create_cinn(self):
     
@@ -274,7 +295,32 @@ class MonetCINN_112_blocks10(nn.Module):
     def reverse_sample(self, z, photo):
         return self.cinn(z, c=self.cond_net(photo), rev=True)
 
-        # am ende fc? oder muss conv dann iwie so passen dass am ende was sinvolles rauskommt
-        # muss latent space gleiche dim wie original space haben
-        # welche dim müssen conditions haben
-        # wieviel channel in subnet?
+    def initialize_weights(self):
+        def initialize_weights_(m):
+            # Conv2d layers
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear): #TODO: what exactly means xavier initialization?
+                nn.init.xavier_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
+                    # xavier not possible for bias
+
+                '''
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight.data, 1)
+                nn.init.constant_(m.bias.data, 0)
+                '''
+
+        # Xavier initialization
+        self.cinn.apply(initialize_weights_)
+
+        # initialize last conv layer of subnet with 0
+        for key, param in self.cinn.named_parameters():
+            split = key.split('.')
+            if param.requires_grad:
+                if len(split) > 3 and split[4][-1] == '5': # last convolution in the coeff func
+                    param.data.fill_(0.)
+
+# am ende fc? oder muss conv dann iwie so passen dass am ende was sinvolles rauskommt
+# muss latent space gleiche dim wie original space haben
+# welche dim müssen conditions haben
+# wieviel channel in subnet?
