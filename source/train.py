@@ -64,7 +64,9 @@ for epoch in range(N_epochs):
                                                             nll_val.item(),
                                                             cinn.optimizer.param_groups[0]['lr'],
                                                             ), flush=True)
-            nll_mean = []
+
+    if epoch > 0 and (epoch % c.checkpoint_save_interval) == 0:
+        torch.save(cinn.state_dict(), c.model_output + '_cinn_checkpoint_%.4i' % (epoch * (1-int(c.checkpoint_save_overwrite == True))))
 
     scheduler.step()
 torch.save(cinn.state_dict(), c.model_output)

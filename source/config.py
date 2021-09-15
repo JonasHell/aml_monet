@@ -45,13 +45,16 @@ test_cond_folder       =  data_root + 'cyclegan test/real/'
 ########################
 
 output_root = '/content/gdrive/MyDrive/CINN/'
-output_image_folder     = output_root + 'images'
+output_image_folder     = output_root + 'images/'
 
 #######################
 # Saving checkpoints: #
 #######################
+checkpoint_save_interval = 10 #in epochs
+checkpoint_save_overwrite = True #Checkpoints are overwritten if set to True
 
+output_model_folder     = output_root + 'model/'
 #This is where the training algorithm stores the model
-model_output = output_root + 'monet_cinn.pt'
+model_output = output_model_folder + 'monet_cinn.pt'
 #This is where the evaluation algorithm reas the model from
 model_path   = model_output
