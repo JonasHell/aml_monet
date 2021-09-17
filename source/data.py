@@ -45,32 +45,25 @@ class PairDataset(Dataset):
 
     if self.transform == False:
       self.img_aug = albumentations.Compose([
-                                         albumentations.Resize(img_size, img_size, always_apply = True),
+                                         albumentations.CenterCrop(cond_size, cond_size, always_apply = True),
                                          albumentations.Normalize(mean, std, always_apply = True)
-      ])
-      self.cond_aug = albumentations.Compose([
-                                         albumentations.Resize(cond_size, cond_size, always_apply = True),
-                                         albumentations.Normalize(mean, std, always_apply = True)
-      ])
+      ], additional_targets={'image0': 'image', 'image1': 'image'})
     else:
       #Apply affine transformations to scale, shift and rotate input images
       self.img_aug = albumentations.Compose([
-                                         albumentations.Resize(img_size, img_size, always_apply = True),
+                                         albumentations.RandomCrop(cond_size, cond_size, always_apply = True),
+                                         albumentations.HorizontalFlip(p=0.5),
                                          albumentations.Normalize(mean, std, always_apply = True),
                                          albumentations.ShiftScaleRotate(shift_limit = 0.0625, 
                                                                          scale_limit = 0.1, 
-                                                                         rotate_limit = 5,
+                                                                         rotate_limit = 40,
                                                                          p = 0.9)
-      ])
-      #Apply affine transformations to scale, shift and rotate input images
-      self.cond_aug = albumentations.Compose([
-                                         albumentations.Resize(cond_size, cond_size, always_apply = True),
-                                         albumentations.Normalize(mean, std, always_apply = True),
-                                         albumentations.ShiftScaleRotate(shift_limit = 0.0625, 
-                                                                         scale_limit = 0.1, 
-                                                                         rotate_limit = 5,
-                                                                         p = 0.9)
-      ])
+      ], additional_targets={'image0': 'image'})
+
+    self.scale_down = albumentations.Compose([
+                                          albumentations.Resize(img_size, img_size, always_apply=True)
+    ])
+
 
   def __len__(self):
     return len(self.image_paths)
@@ -78,16 +71,18 @@ class PairDataset(Dataset):
   #Return tuple of image and its condition (another image)
   def __getitem__(self, index):
     #Open image and convert to numpy array 
-    image = np.array(Image.open(self.image_paths[index]))
-    image = self.img_aug(image = image)["image"]
+    image     = np.array(Image.open(self.image_paths[index]))
+    condition = np.array(Image.open(self.condition_paths[index]))
+    transformed = self.img_aug(image = image, image0 = condition)
+    image     = transformed["image"]
+    condition = transformed["image0"]
+
+    image = self.scale_down(image = image)["image"]
     image = np.transpose(image, (2,0,1)).astype(np.float32)
     image = torch.tensor(image, dtype = torch.float)
     if self.noise:
         image += 0.005 * torch.rand_like(image)
 
-    #Open image and convert to numpy array 
-    condition = np.array(Image.open(self.condition_paths[index]))
-    condition = self.cond_aug(image = condition)["image"]
     condition = np.transpose(condition, (2,0,1)).astype(np.float32)
     condition = torch.tensor(condition, dtype = torch.float)
     if self.noise:
@@ -95,7 +90,7 @@ class PairDataset(Dataset):
 
     return image, condition
 
-
+print("Set up training data")
 
 training_img_list   =  [c.training_img_folder  + f'fake{i}.jpg' for i in range(1, 1 + c.N_train)]
 training_cond_list  =  [c.training_cond_folder + f'real{i}.jpg' for i in range(1, 1 + c.N_train)]
