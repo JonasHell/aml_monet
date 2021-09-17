@@ -316,8 +316,9 @@ class MonetCINN_112_blocks10(nn.Module):
         nodes.append(Ff.OutputNode(nodes[-1], name='output'))
         #print(nodes[-1])
         #TODO: use GraphINN or ReversibleGraphNet??
-        return Ff.ReversibleGraphNet(nodes + split_nodes + condition_nodes)
-        #return Ff.GraphINN(nodes + split_nodes + condition_nodes)
+        #DEBUG
+        #return Ff.ReversibleGraphNet(nodes + split_nodes + condition_nodes)
+        return Ff.GraphINN(nodes + split_nodes + condition_nodes)
 
         # problem für bericht: beim erstellen der graphen gibt es eine randomness, beim erstellen des graphen,
         # schwierig beim speichern und laden mit state_dict(), da die namen der parameter vond er reihenfogle bahängen
@@ -473,10 +474,10 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         super().__init__()
 
         self.cinn = self.create_cinn()
-        self.initialize_weights()
+        self.initialize_weights_priv()
 
-        self.cond_net = ConditionNet_debug()
-        self.cond_net.initialize_pretrained(pretrained_path)
+        #self.cond_net = ConditionNet_debug()
+        #self.cond_net.initialize_pretrained(pretrained_path)
 
         self.trainable_parameters = [p for p in self.parameters() if p.requires_grad]
         self.optimizer = torch.optim.Adam(self.trainable_parameters, lr=learning_rate, betas=c.betas, eps=1e-6, weight_decay=c.weight_decay)
@@ -521,7 +522,7 @@ class MonetCINN_112_blocks10_debug(nn.Module):
                     conditions=condition, #TODO
                     name=prefix+f'-block{k+1}'
                 ))
-
+                '''
                 # add permutation after each block
                 nodes.append(Ff.Node(
                     nodes[-1],
@@ -529,6 +530,7 @@ class MonetCINN_112_blocks10_debug(nn.Module):
                     {},
                     name=prefix+f'-block{k+1}-perm'
                 ))
+                '''
             #print(nodes[-1])
             # split channels off
             if split_nodes is not None:
@@ -560,6 +562,7 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         #nodes = [Ff.InputNode(3, 256, 256)]
         nodes = [Ff.InputNode(3, 112, 112)]
 
+        '''
         # create conditions
         condition_nodes = [ Ff.ConditionNode(128, 112, 112),
                             Ff.ConditionNode(256, 56, 56),
@@ -567,16 +570,18 @@ class MonetCINN_112_blocks10_debug(nn.Module):
                             Ff.ConditionNode(512, 14, 14),
                             Ff.ConditionNode(512, 7, 7),
                             Ff.ConditionNode(4096)] #TODO: 1000 or 4096?
-
+        
+        '''
         # create split_nodes
         split_nodes = []
         
+
         # stage 1
         # one block (3 x 112 x 112)
         # with conv3 subnet
         subnet_func = lambda _: subnet_conv(32, 64, 3)
         add_stage(nodes, 1, subnet_func,
-            condition=condition_nodes[0],
+            #condition=condition_nodes[0],
             prefix='stage1'
         )
 
@@ -585,8 +590,8 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         # one with conv1 and one with conv3 subnet
         subnet_func = lambda block_num: subnet_conv(64, 128, 3 if block_num%2 else 1)
         add_stage(nodes, 2, subnet_func,
-            condition=condition_nodes[1],
-            split_nodes=split_nodes,
+            #condition=condition_nodes[1],
+            #split_nodes=split_nodes,
             prefix='stage2'
         )
 
@@ -595,8 +600,8 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         # one with conv1 and one with conv3 subnet
         subnet_func = lambda block_num: subnet_conv(128, 256, 3 if block_num%2 else 1)
         add_stage(nodes, 2, subnet_func,
-            condition=condition_nodes[2],
-            split_nodes=split_nodes,
+            #condition=condition_nodes[2],
+            #split_nodes=split_nodes,
             prefix='stage3'
         )
 
@@ -605,8 +610,8 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         # one with conv1 and one with conv3 subnet
         subnet_func = lambda block_num: subnet_conv(128, 256, 3 if block_num%2 else 1)
         add_stage(nodes, 2, subnet_func,
-            condition=condition_nodes[3],
-            split_nodes=split_nodes,
+            #condition=condition_nodes[3],
+            #split_nodes=split_nodes,
             prefix='stage4'
         )
         #TODO: does it make sense to increase num of channels in subnets?
@@ -617,10 +622,10 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         # one with conv1 and one with conv3 subnet
         subnet_func = lambda block_num: subnet_conv(128, 256, 3 if block_num%2 else 1)
         add_stage(nodes, 2, subnet_func,
-            condition=condition_nodes[4],
+            #condition=condition_nodes[4],
             downsample=False,
-            split_nodes=split_nodes,
-            split_sizes=[24, 72],
+            #split_nodes=split_nodes,
+            #split_sizes=[24, 72],
             prefix='stage5'
         )
 
@@ -637,10 +642,11 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         # with fc subnetwork
         subnet_func = lambda _: subnet_fc(1024, 1024)
         add_stage(nodes, 1, subnet_func,
-            condition=condition_nodes[5],
+            #condition=condition_nodes[5],
             downsample=False,
             prefix='stage6'
         )
+        '''
         #print(nodes[-1])
         # concat all the splits and the output of fc part
         nodes.append(Ff.Node(
@@ -649,31 +655,36 @@ class MonetCINN_112_blocks10_debug(nn.Module):
             {'dim':0},
             name='concat'
         ))
+        '''
         #print(nodes[-1])
         # add output node
         nodes.append(Ff.OutputNode(nodes[-1], name='output'))
         #print(nodes[-1])
         #TODO: use GraphINN or ReversibleGraphNet??
-        return Ff.ReversibleGraphNet(nodes + split_nodes + condition_nodes)
+        return Ff.GraphINN(nodes)# + split_nodes) # + condition_nodes)
         #return Ff.GraphINN(nodes + split_nodes + condition_nodes)
 
         # problem für bericht: beim erstellen der graphen gibt es eine randomness, beim erstellen des graphen,
         # schwierig beim speichern und laden mit state_dict(), da die namen der parameter vond er reihenfogle bahängen
 
-    def forward(self, monet, photo):
-        return self.cinn(monet, c=self.cond_net(photo), jac=True)
+    def forward(self, monet):
+        #return self.cinn(monet, c=self.cond_net(photo), jac=True)
+        return self.cinn(monet)
 
-    def reverse_sample(self, z, photo):
-        return self.cinn(z, c=self.cond_net(photo), rev=True)
+    def reverse_sample(self, z):
+        #return self.cinn(z, c=self.cond_net(photo), rev=True)
+        return self.cinn(z, rev=True)
 
+    '''
     def forward_c_given(self, monet, c):
         return self.cinn(monet, c=c, jac=True)
 
     def reverse_sample_c_given(self, z, c):
         return self.cinn(z, c=c, rev=True)
+    '''
 
-    def initialize_weights(self):
-        def initialize_weights_(m):
+    def initialize_weights_priv(self):
+        def initialize_weights_priv_(m):
             # Conv2d layers
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear): #TODO: what exactly means xavier initialization?
                 nn.init.xavier_normal_(m.weight.data)
@@ -688,11 +699,23 @@ class MonetCINN_112_blocks10_debug(nn.Module):
                 '''
 
         # Xavier initialization
-        self.cinn.apply(initialize_weights_)
+        self.cinn.apply(initialize_weights_priv_)
 
         # initialize last conv layer of subnet with 0
         for key, param in self.cinn.named_parameters():
             split = key.split('.')
-            if param.requires_grad:
-                if len(split) > 3 and split[4][-1] == '5': # last convolution in the coeff func
-                    param.data.fill_(0.)
+            #print(key)
+            #DEBUG
+            #if param.requires_grad:
+                
+            if len(split) > 3 and split[3][-1] == '5': # last convolution in the coeff func
+                print(key)
+                param.data.fill_(0.)
+            
+            #TODO
+            #DEBUG
+            # fill last fc layer with 0 manually
+            #if key == 'module_list.23.subnet1.4.weight' or key == 'module_list.23.subnet2.4.weight':
+            if key == 'module_list.14.subnet1.4.weight' or key == 'module_list.14.subnet2.4.weight':
+                print('NIIIIICEEEEE!!!!!!')
+                param.data.fill_(0.)
