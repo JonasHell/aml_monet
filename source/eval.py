@@ -129,6 +129,83 @@ class AnimatedGif:
         animation = anim.ArtistAnimation(self.fig, self.images)
         animation.save(filename, writer="pillow", fps=2)
 
+def pca_scatter(img_folder=c.output_image_folder):
+    ''' Perform PCA on latent space and and visualise test dataset projected onto 2D plane in latent space.'''
+    image_characteristics = []
+
+    with torch.no_grad():
+        for images in tqdm(data.train_loader):
+            image     = images[0].to(c.device)
+            condition = images[1].to(c.device)
+            z, log_j = cinn.forward(image, condition)
+            print(z.shape)
+
+            nll = torch.mean(z**2) / 2 - torch.mean(log_j) / c.ndim_total
+        
+            image_characteristics.append([nll.cpu().numpy(), z.cpu().numpy()])
+
+
+    log_likeli_combined = np.array([C[0] for C in image_characteristics])
+    outputs_combined    = np.concatenate([C[1] for C in image_characteristics], axis=0)
+
+    pca = PCA(n_components=2)
+    pca.fit(outputs_combined)
+
+
+    for i, (log_l, outputs) in enumerate(image_characteristics):
+        outputs_pca = pca.transform(outputs)
+        center = pca.transform(np.zeros((2, outputs.shape[1])))
+
+        plt.figure(figsize=(9,9))
+        plt.scatter(outputs_pca[:, 0], outputs_pca[:, 1])
+        #plt.scatter(outputs_pca[len(high_sat):, 0], outputs_pca[len(high_sat):, 1], s=size[len(high_sat):], c=repr_colors[len(high_sat):])
+        #plt.colorbar()
+        #plt.scatter(center[:, 0], center[:, 1], c='black', marker='+', s=150)
+        plt.xlim(-100, 100)
+        plt.ylim(-100, 100)
+        plt.savefig(f"{img_folder}/pcascatter_{i}.jpg", dpi=200)
+        
+def pca_scatter(img_folder=c.output_image_folder):
+    ''' Perform PCA on latent space and and visualise test dataset projected onto 2D plane in latent space.'''
+    image_characteristics = []
+
+    with torch.no_grad():
+        for images in tqdm(data.train_loader):
+            image     = images[0].to(c.device)
+            condition = images[1].to(c.device)
+            z, log_j = cinn.forward(image, condition)
+            print(z.shape)
+
+            nll = torch.mean(z**2) / 2 - torch.mean(log_j) / c.ndim_total
+        
+            image_characteristics.append([nll.cpu().numpy(), z.cpu().numpy()])
+
+
+    log_likeli_combined = np.array([C[0] for C in image_characteristics])
+    outputs_combined    = np.concatenate([C[1] for C in image_characteristics], axis=0)
+
+    pca = PCA(n_components=2)
+    pca.fit(outputs_combined)
+
+
+    outputs_pca = []
+    for i, (log_l, outputs) in enumerate(image_characteristics):
+        outputs_pca.append(pca.transform(outputs))
+
+    outputs = np.concatenate(outputs_pca, axis =0)
+    plt.figure(figsize=(9,9))
+    plt.scatter(outputs[:, 0], outputs[:, 1])
+    #plt.scatter(outputs_pca[len(high_sat):, 0], outputs_pca[len(high_sat):, 1], s=size[len(high_sat):], c=repr_colors[len(high_sat):])
+    #plt.colorbar()
+    #plt.scatter(center[:, 0], center[:, 1], c='black', marker='+', s=150)
+    plt.xlim(-100, 100)
+    plt.ylim(-100, 100)
+    plt.xlabel("# PCA vector 1")
+    plt.ylabel("# PCA vector 2")
+    plt.title("Training set projected into 2D PCA plane")
+    plt.savefig(f"{img_folder}/pcascatter.jpg", dpi=200)
+    plt.clf()
+
 def latent_space_pca(n_components = 2, img_folder=c.output_image_folder):
     ''' Perform PCA on latent space and interpolate in latent space with principal eigenvectors.'''
     counter = 0
