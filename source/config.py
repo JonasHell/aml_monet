@@ -14,6 +14,7 @@ ndim_total = 3 * 112 * 112
 N_epochs    = 10
 lr          = 1e-3
 batch_size  = 16
+test_batch_size  = 1
 
 #Total number of images used for training
 N_train     = 64
