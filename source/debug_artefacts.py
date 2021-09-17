@@ -1,13 +1,12 @@
 # %% imports
-from models import MonetCINN_112_blocks10_debug
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from models import MonetCINN_112_blocks10, ConditionNet, MonetCINN_112_blocks10_debug
+from models import MonetCINN_112_blocks10, ConditionNet, MonetCINN_112_blocks10_debug, SimpleNet
 
 # %% create net
-net = MonetCINN_112_blocks10_debug(0.01).cuda()
+net = MonetCINN_112_blocks10(0.01).cuda()
 net.eval()
 
 # %% output all layers with parameters
@@ -21,21 +20,21 @@ for key, param in net.named_parameters():
 c_given = net.cond_net.forward(torch.rand((1, 3, 224, 224)).cuda())
 
 # %% run 100 times with random tensor
-N = 100
+N = 10
 diffs = np.zeros((N, 3, 112, 112))
 diffs_norm = np.zeros((N, 3, 112, 112))
 for i in range(N):
     print(i)
 
     x = torch.rand((1, 3, 112, 112)).cuda()
-    #c = torch.rand((1, 3, 224, 224)).cuda()
+    c = torch.rand((1, 3, 224, 224)).cuda()
 
-    #z, _ = net.forward(x, c)
-    #rec_x, _ = net.reverse_sample(z, c)
+    z, _ = net.forward(x, c)
+    rec_x, _ = net.reverse_sample(z, c)
     #z, _ = net.forward_c_given(x, c_given)
     #rec_x, _ = net.reverse_sample_c_given(z, c_given)
-    z, _ = net.forward(x)
-    rec_x, _ = net.reverse_sample(z)
+    #z, _ = net.forward(x)
+    #rec_x, _ = net.reverse_sample(z)
 
     diffs[i] = x[0].cpu().detach().numpy() - rec_x[0].cpu().detach().numpy()
     diffs_norm[i] = diffs[i] / x[0].cpu().detach().numpy()

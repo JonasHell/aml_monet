@@ -1,5 +1,6 @@
 # %%
 import os
+from FrEIA.modules.graph_topology import Split
 
 import torch
 import torch.nn as nn
@@ -213,8 +214,10 @@ class MonetCINN_112_blocks10(nn.Module):
             if downsample:
                 nodes.append(Ff.Node(
                     nodes[-1],
-                    Fm.HaarDownsampling,
-                    {'rebalance': 0.5},
+                    #Fm.HaarDownsampling,
+                    #{'rebalance': 0.5},
+                    Fm.IRevNetDownsampling,
+                    {},
                     name=prefix+'-down'
                 ))
             
@@ -356,10 +359,22 @@ class MonetCINN_112_blocks10(nn.Module):
         # initialize last conv layer of subnet with 0
         for key, param in self.cinn.named_parameters():
             split = key.split('.')
-            if param.requires_grad:
-                if len(split) > 3 and split[4][-1] == '5': # last convolution in the coeff func
-                    param.data.fill_(0.)
-
+            #print(key)
+            #DEBUG
+            #if param.requires_grad:
+                
+            if len(split) > 3 and split[3][-1] == '5': # last convolution in the coeff func
+                print(key)
+                param.data.fill_(0.)
+            
+            #TODO
+            #DEBUG
+            # fill last fc layer with 0 manually
+            #if key == 'module_list.23.subnet1.4.weight' or key == 'module_list.23.subnet2.4.weight':
+            if key == 'module_list.27.subnet1.4.weight' or key == 'module_list.27.subnet2.4.weight':
+                print('NIIIIICEEEEE!!!!!!')
+                param.data.fill_(0.)
+                
 # am ende fc? oder muss conv dann iwie so passen dass am ende was sinvolles rauskommt
 # muss latent space gleiche dim wie original space haben
 # welche dim müssen conditions haben
@@ -522,7 +537,7 @@ class MonetCINN_112_blocks10_debug(nn.Module):
                     conditions=condition, #TODO
                     name=prefix+f'-block{k+1}'
                 ))
-                '''
+                
                 # add permutation after each block
                 nodes.append(Ff.Node(
                     nodes[-1],
@@ -530,7 +545,7 @@ class MonetCINN_112_blocks10_debug(nn.Module):
                     {},
                     name=prefix+f'-block{k+1}-perm'
                 ))
-                '''
+                
             #print(nodes[-1])
             # split channels off
             if split_nodes is not None:
@@ -553,8 +568,10 @@ class MonetCINN_112_blocks10_debug(nn.Module):
             if downsample:
                 nodes.append(Ff.Node(
                     nodes[-1],
-                    Fm.HaarDownsampling,
-                    {'rebalance': 0.5},
+                    #Fm.HaarDownsampling,
+                    #{'rebalance': 0.5},
+                    Fm.IRevNetDownsampling,
+                    {},
                     name=prefix+'-down'
                 ))
             
@@ -591,7 +608,7 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         subnet_func = lambda block_num: subnet_conv(64, 128, 3 if block_num%2 else 1)
         add_stage(nodes, 2, subnet_func,
             #condition=condition_nodes[1],
-            #split_nodes=split_nodes,
+            split_nodes=split_nodes,
             prefix='stage2'
         )
 
@@ -601,7 +618,7 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         subnet_func = lambda block_num: subnet_conv(128, 256, 3 if block_num%2 else 1)
         add_stage(nodes, 2, subnet_func,
             #condition=condition_nodes[2],
-            #split_nodes=split_nodes,
+            split_nodes=split_nodes,
             prefix='stage3'
         )
 
@@ -611,7 +628,7 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         subnet_func = lambda block_num: subnet_conv(128, 256, 3 if block_num%2 else 1)
         add_stage(nodes, 2, subnet_func,
             #condition=condition_nodes[3],
-            #split_nodes=split_nodes,
+            split_nodes=split_nodes,
             prefix='stage4'
         )
         #TODO: does it make sense to increase num of channels in subnets?
@@ -624,8 +641,8 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         add_stage(nodes, 2, subnet_func,
             #condition=condition_nodes[4],
             downsample=False,
-            #split_nodes=split_nodes,
-            #split_sizes=[24, 72],
+            split_nodes=split_nodes,
+            split_sizes=[24, 72],
             prefix='stage5'
         )
 
@@ -646,7 +663,7 @@ class MonetCINN_112_blocks10_debug(nn.Module):
             downsample=False,
             prefix='stage6'
         )
-        '''
+        
         #print(nodes[-1])
         # concat all the splits and the output of fc part
         nodes.append(Ff.Node(
@@ -655,13 +672,13 @@ class MonetCINN_112_blocks10_debug(nn.Module):
             {'dim':0},
             name='concat'
         ))
-        '''
+        
         #print(nodes[-1])
         # add output node
         nodes.append(Ff.OutputNode(nodes[-1], name='output'))
         #print(nodes[-1])
         #TODO: use GraphINN or ReversibleGraphNet??
-        return Ff.GraphINN(nodes)# + split_nodes) # + condition_nodes)
+        return Ff.GraphINN(nodes + split_nodes) # + condition_nodes)
         #return Ff.GraphINN(nodes + split_nodes + condition_nodes)
 
         # problem für bericht: beim erstellen der graphen gibt es eine randomness, beim erstellen des graphen,
@@ -716,6 +733,151 @@ class MonetCINN_112_blocks10_debug(nn.Module):
             #DEBUG
             # fill last fc layer with 0 manually
             #if key == 'module_list.23.subnet1.4.weight' or key == 'module_list.23.subnet2.4.weight':
-            if key == 'module_list.14.subnet1.4.weight' or key == 'module_list.14.subnet2.4.weight':
+            if key == 'module_list.27.subnet1.4.weight' or key == 'module_list.27.subnet2.4.weight':
+                print('NIIIIICEEEEE!!!!!!')
+                param.data.fill_(0.)
+
+
+class SimpleNet(nn.Module):
+    def __init__(self, learning_rate, pretrained_path=os.getcwd()):
+        super().__init__()
+
+        self.cinn = self.create_cinn()
+        self.initialize_weights_priv()
+
+    def create_cinn(self):
+    
+        def subnet_conv(hidden_channels_1, hidden_channels_2, kernel_size):
+            padding = kernel_size // 2
+            return lambda in_channels, out_channels: nn.Sequential(
+                nn.Conv2d(in_channels, hidden_channels_1, kernel_size, padding=padding),
+                nn.ReLU(),
+                nn.Conv2d(hidden_channels_1, hidden_channels_2, kernel_size, padding=padding),
+                nn.ReLU(),
+                nn.BatchNorm2d(hidden_channels_2),
+                nn.Conv2d(hidden_channels_2, out_channels, kernel_size, padding=padding)
+            )
+
+        def subnet_fc(hidden_channels_1, hidden_channels_2):
+            return lambda in_channels, out_channels: nn.Sequential(
+                nn.Linear(in_channels, hidden_channels_1),
+                nn.ReLU(),
+                nn.Linear(hidden_channels_1, hidden_channels_2),
+                nn.ReLU(),
+                nn.Linear(hidden_channels_2, out_channels)
+            )
+   
+        # create nodes with input node
+        nodes = [Ff.InputNode(3, 112, 112)]
+
+        subnet = subnet_conv(32, 64, 3)
+        nodes.append(Ff.Node(
+            nodes[-1],
+            Fm.GLOWCouplingBlock,
+            {'subnet_constructor': subnet, 'clamp': 2.0}
+        ))
+
+        '''
+        nodes.append(Ff.Node(
+            nodes[-1],
+            Fm.HaarDownsampling,
+            {}
+        ))
+        '''
+        nodes.append(Ff.Node(
+            nodes[-1],
+            Fm.IRevNetDownsampling,
+            {}
+        ))
+
+        subnet = subnet_conv(32, 64, 3)
+        nodes.append(Ff.Node(
+            nodes[-1],
+            Fm.GLOWCouplingBlock,
+            {'subnet_constructor': subnet, 'clamp': 2.0}
+        ))
+
+        nodes.append(Ff.Node(
+            nodes[-1],
+            Fm.PermuteRandom,
+            {}
+        ))
+        
+        # flatten for fc part
+        nodes.append(Ff.Node(
+            nodes[-1],
+            Fm.Flatten,
+            {},
+            name='flatten'
+        ))
+
+        split_node = Ff.Node(
+            nodes[-1],
+            Fm.Split,
+            {}
+        )
+
+        nodes.append(split_node)
+
+        subnet = subnet_fc(1024, 1024)
+        nodes.append(Ff.Node(
+            nodes[-1],
+            Fm.GLOWCouplingBlock,
+            {'subnet_constructor': subnet, 'clamp': 2.0}
+        ))
+        
+        nodes.append(Ff.Node(
+            [nodes[-1].out0, split_node.out1],
+            Fm.Concat,
+            {}
+        ))
+
+        # add output node
+        nodes.append(Ff.OutputNode(nodes[-1], name='output'))
+
+        return Ff.GraphINN(nodes)
+
+    def forward(self, monet):
+        #return self.cinn(monet, c=self.cond_net(photo), jac=True)
+        return self.cinn(monet)
+
+    def reverse_sample(self, z):
+        #return self.cinn(z, c=self.cond_net(photo), rev=True)
+        return self.cinn(z, rev=True)
+
+    def initialize_weights_priv(self):
+        def initialize_weights_priv_(m):
+            # Conv2d layers
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear): #TODO: what exactly means xavier initialization?
+                nn.init.xavier_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
+                    # xavier not possible for bias
+
+                '''
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight.data, 1)
+                nn.init.constant_(m.bias.data, 0)
+                '''
+
+        # Xavier initialization
+        self.cinn.apply(initialize_weights_priv_)
+
+        # initialize last conv layer of subnet with 0
+        for key, param in self.cinn.named_parameters():
+            split = key.split('.')
+            #print(key)
+            #DEBUG
+            #if param.requires_grad:
+                
+            if len(split) > 3 and split[3][-1] == '5': # last convolution in the coeff func
+                print(key)
+                param.data.fill_(0.)
+            
+            #TODO
+            #DEBUG
+            # fill last fc layer with 0 manually
+            #if key == 'module_list.23.subnet1.4.weight' or key == 'module_list.23.subnet2.4.weight':
+            if key == 'module_list.6.subnet1.4.weight' or key == 'module_list.6.subnet2.4.weight':
                 print('NIIIIICEEEEE!!!!!!')
                 param.data.fill_(0.)
