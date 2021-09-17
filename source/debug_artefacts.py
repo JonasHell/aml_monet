@@ -11,6 +11,13 @@ net = MonetCINN_112_blocks10_debug(0.01).cuda()
 net.eval()
 
 # %%
+for key, param in net.named_parameters():
+    print(key)
+    print(param.shape)
+    print(param)
+    print()
+
+# %%
 c_given = net.cond_net.forward(torch.rand((1, 3, 224, 224)).cuda())
 
 # %%
@@ -25,11 +32,22 @@ for i in range(N):
 
     #z, _ = net.forward(x, c)
     #rec_x, _ = net.reverse_sample(z, c)
-    z, _ = net.forward_c_given(x, c_given)
-    rec_x, _ = net.reverse_sample_c_given(z, c_given)
+    #z, _ = net.forward_c_given(x, c_given)
+    #rec_x, _ = net.reverse_sample_c_given(z, c_given)
+    z, _ = net.forward(x)
+    rec_x, _ = net.reverse_sample(z)
 
     diffs[i] = x[0].cpu().detach().numpy() - rec_x[0].cpu().detach().numpy()
     diffs_norm[i] = diffs[i] / x[0].cpu().detach().numpy()
+
+# %%
+print(np.sort(x.flatten().cpu().detach().numpy()))
+print(np.sort(z.flatten().cpu().detach().numpy()))
+
+# %%
+plt.plot(np.sort(x.flatten().cpu().detach().numpy()), label='x')
+plt.plot(np.sort(z.flatten().cpu().detach().numpy()), label='z')
+plt.legend()
 
 # %%
 plt.plot(np.max(diffs, axis=(1,2,3)), label='max')
@@ -49,5 +67,7 @@ plt.plot(np.mean(diffs_norm, axis=(1,2,3)), label='mean')
 plt.legend()
 
 plt.show()
+
+# %%
 
 # %%
