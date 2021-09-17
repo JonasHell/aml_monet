@@ -1,11 +1,15 @@
+
+from __future__ import division
+ 
 from os import replace
 from os.path import join
 
-import torch
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as anim
+
+import torch
 from tqdm import tqdm #tqdm is used to show progress bars
-from scipy.spatial import distance_matrix
 
 from sklearn.decomposition import PCA
 
@@ -18,14 +22,14 @@ cinn.to(c.device)
 state_dict = torch.load(c.model_path)
 for key in state_dict.keys():
   print(key)
-state_dict["cinn.module_list.28.perm"]    = state_dict["cinn.module_list.32.perm"]
-state_dict["cinn.module_list.29.perm"]    = state_dict["cinn.module_list.32.perm"]
-state_dict["cinn.module_list.30.perm"]    = state_dict["cinn.module_list.32.perm"]
-state_dict["cinn.module_list.31.perm"]    = state_dict["cinn.module_list.32.perm"]
-state_dict["cinn.module_list.28.perm_inv"] = state_dict["cinn.module_list.32.perm_inv"]
-state_dict["cinn.module_list.29.perm_inv"] = state_dict["cinn.module_list.32.perm_inv"]
-state_dict["cinn.module_list.30.perm_inv"] = state_dict["cinn.module_list.32.perm_inv"]
-state_dict["cinn.module_list.31.perm_inv"] = state_dict["cinn.module_list.32.perm_inv"]
+state_dict["cinn.module_list.28.perm"]    = state_dict["cinn.module_list.30.perm"]
+state_dict["cinn.module_list.29.perm"]    = state_dict["cinn.module_list.30.perm"]
+state_dict["cinn.module_list.30.perm"]    = state_dict["cinn.module_list.30.perm"]
+state_dict["cinn.module_list.31.perm"]    = state_dict["cinn.module_list.30.perm"]
+state_dict["cinn.module_list.28.perm_inv"] = state_dict["cinn.module_list.30.perm_inv"]
+state_dict["cinn.module_list.29.perm_inv"] = state_dict["cinn.module_list.30.perm_inv"]
+state_dict["cinn.module_list.30.perm_inv"] = state_dict["cinn.module_list.30.perm_inv"]
+state_dict["cinn.module_list.31.perm_inv"] = state_dict["cinn.module_list.30.perm_inv"]
 #state_dict = {k:v for k,v in torch.load(c.model_path).items() if 'tmp_var' not in k}
 cinn.load_state_dict(state_dict, strict = False)
 
@@ -106,48 +110,88 @@ def rgb_var(n):
         print(F'sqrt(Var) (of {n} samples)')
         print(np.sqrt(np.mean(var)))
 
-def latent_space_pca(n_components = 2, img_folder=c.output_image_folder):
-    ''' Perform PCA on latent space to see where images lie in relation to each other.'''
+ 
+class AnimatedGif:
+    def __init__(self, size=(c.img_size, c.img_size)):
+        self.fig = plt.figure()
+        self.fig.set_size_inches(size[0] / 100, size[1] / 100)
+        ax = self.fig.add_axes([0, 0, 1, 1], frameon=False, aspect=1)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        self.images = []
+ 
+    def add(self, image, label=''):
+        plt_im = plt.imshow(image, vmin=0, vmax=1, animated=True)
+        plt_txt = plt.text(10, 310, label, color='red')
+        self.images.append([plt_im, plt_txt])
+ 
+    def save(self, filename):
+        animation = anim.ArtistAnimation(self.fig, self.images)
+        animation.save(filename, writer="pillow", fps=2)
+
+def latent_space_pca(n_components = 8, img_folder=c.output_image_folder):
+    ''' Perform PCA on latent space and interpolate in latent space with principal eigenvectors.'''
     counter = 0
     image_characteristics = []
 
     with torch.no_grad():
-        for images in tqdm(data.test_loader):
+        for images in tqdm(data.train_loader):
             image     = images[0].to(c.device)
             condition = images[1].to(c.device)
             z, log_j = cinn.forward(image, condition)
+            print(z.shape)
 
             nll = torch.mean(z**2) / 2 - torch.mean(log_j) / c.ndim_total
-            z = z.cpu().numpy()
+     
+            image_characteristics.append([nll.cpu().numpy(), z.cpu().numpy()])
 
-            image_characteristics.append([nll, z])
 
-
-    log_likeli_combined = np.concatenate([C[0] for C in image_characteristics], axis=0)
+    log_likeli_combined = np.array([C[0] for C in image_characteristics])
     outputs_combined    = np.concatenate([C[1] for C in image_characteristics], axis=0)
 
     pca = PCA(n_components=n_components)
     pca.fit(outputs_combined)
 
+    batch = 0
+    #Iterate over Test Set
     with torch.no_grad():
         for images in tqdm(data.test_loader):
+            animation_images = []
+            condition = images[1].to(c.device)
+
+            #Iterate over components
             for i in range(n_components):
                 z_vector = pca.components_[i, :]
-                image     = images[0].to(c.device)
 
-                for t in np.linspace(-1, -1, 10):
-                    recs, j = cinn.reverse_sample(z_vector*t, condition)
+                animation_images.append([])
+                
+                for k in range(condition.shape[0]):
+                    animation_images[-1].append([])
+
+                #Interpolate in latent space
+                for j, t in enumerate(np.linspace(-100, 100, 10)):
+                    z = torch.from_numpy(z_vector) * t
+                    z = z.repeat(1, condition.shape[0]).to(c.device)
+                    recs, j = cinn.reverse_sample(z, condition)
                     recs = recs.cpu().numpy()
 
-                    for im in recs:
+                    #Iterate over images in batch
+                    for k, im in enumerate(recs):
                         im = np.abs(np.transpose(im, (1,2,0)))
                         im[im<0] = 0
                         im[im>1] = 1
-                        #print(im)
-                        plt.imsave(f"{img_folder}, {counter}, {t}.jpg", im)
-                        counter += 1
+                        animation_images[-1][k].append(im)
+            #Store images in batch as gif animation
+            for i, components in enumerate(animation_images):
+                for j, photo in enumerate(components):
+                    for k, frame in enumerate(photo):
+                        gif = AnimatedGif()
+                        gif.add(im, label=f"Frame: {k}")
+                    gif.save(filename= f"{img_folder}/img_{j}_batch_{batch}_component_{i}.gif")
+            batch += 1
 
 
 for i in range(8):
     torch.manual_seed(i+111)
-    style_transfer_test_set(postfix=i)
+    latent_space_pca()
+    #style_transfer_test_set(postfix=i)
