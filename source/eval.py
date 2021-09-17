@@ -1,4 +1,3 @@
-
 from __future__ import division
  
 from os import replace
@@ -18,21 +17,36 @@ import models
 import data
 
 cinn = models.MonetCINN_112_blocks10(0)
-cinn.to(c.device)
-state_dict = torch.load(c.model_path)
-for key in state_dict.keys():
-  print(key)
-state_dict["cinn.module_list.28.perm"]    = state_dict["cinn.module_list.30.perm"]
-state_dict["cinn.module_list.29.perm"]    = state_dict["cinn.module_list.30.perm"]
-state_dict["cinn.module_list.30.perm"]    = state_dict["cinn.module_list.30.perm"]
-state_dict["cinn.module_list.31.perm"]    = state_dict["cinn.module_list.30.perm"]
-state_dict["cinn.module_list.28.perm_inv"] = state_dict["cinn.module_list.30.perm_inv"]
-state_dict["cinn.module_list.29.perm_inv"] = state_dict["cinn.module_list.30.perm_inv"]
-state_dict["cinn.module_list.30.perm_inv"] = state_dict["cinn.module_list.30.perm_inv"]
-state_dict["cinn.module_list.31.perm_inv"] = state_dict["cinn.module_list.30.perm_inv"]
-#state_dict = {k:v for k,v in torch.load(c.model_path).items() if 'tmp_var' not in k}
-cinn.load_state_dict(state_dict, strict = False)
 
+print("Loading state dict")
+old_state_dict = cinn.state_dict()
+new_state_dict = torch.load(c.model_path)
+
+j_old = -1
+j_new = -1
+
+for i in range(28, 33):
+  #print(f"Current permutation index {i}")
+  key = f"cinn.module_list.{i}.perm"
+  if key in old_state_dict:
+    j_old = i
+  if key in new_state_dict:
+    j_new = i
+
+print(j_old, j_new)
+assert(j_old != -1)
+assert(j_new != -1)
+
+if j_old != j_new:
+  new_state_dict[f"cinn.module_list.{j_old}.perm"]     = new_state_dict[f"cinn.module_list.{j_new}.perm"]
+  new_state_dict[f"cinn.module_list.{j_old}.perm_inv"] = new_state_dict[f"cinn.module_list.{j_new}.perm_inv"]
+  del new_state_dict[f"cinn.module_list.{j_new}.perm"]
+  del new_state_dict[f"cinn.module_list.{j_new}.perm_inv"]
+
+#state_dict = {k:v for k,v in torch.load(c.model_path).items() if 'tmp_var' not in k}
+cinn.load_state_dict(new_state_dict)
+
+cinn.to(c.device)
 cinn.eval()
 
 def style_transfer_test_set(temp=1., postfix=0, img_folder=c.output_image_folder):
@@ -136,20 +150,19 @@ def pca_scatter(img_folder=c.output_image_folder):
 
     with torch.no_grad():
         for images in tqdm(data.train_loader):
-            colour    = np.mean(images[0].numpy())
+            colour    = images[0].numpy().mean(axis=(2, 3))
             image     = images[0].to(c.device)
             condition = images[1].to(c.device)
             z, log_j = cinn.forward(image, condition)
-            print(z.shape)
 
-            nll = torch.mean(z**2) / 2 - torch.mean(log_j) / c.ndim_total
-        
-            image_characteristics.append([nll.cpu().numpy(), z.cpu().numpy()], colour)
+            nll = torch.mean(z**2, axis=1) / 2 - log_j / c.ndim_total
+            image_characteristics.append([nll.cpu().numpy(), z.cpu().numpy(), colour])
 
 
-    likelihoods = np.array([C[0] for C in image_characteristics])
+    likelihoods         = np.concatenate([C[0] for C in image_characteristics], axis =0 )
     outputs_combined    = np.concatenate([C[1] for C in image_characteristics], axis=0)
-
+    colours             = np.concatenate([C[2] for C in image_characteristics], axis =0 )
+    
     pca = PCA(n_components=2)
     pca.fit(outputs_combined)
 
@@ -158,11 +171,8 @@ def pca_scatter(img_folder=c.output_image_folder):
 
     plt.figure(figsize=(9,9))        
     size = 10 + (40 * (likelihoods - np.min(likelihoods)) / (np.max(likelihoods) - np.min(likelihoods)))**2
-
-    plt.scatter(outputs_pca[:, 0], outputs_pca[:, 1], s = likelihoods)
-    #plt.scatter(outputs_pca[len(high_sat):, 0], outputs_pca[len(high_sat):, 1], s=size[len(high_sat):], c=repr_colors[len(high_sat):])
-    #plt.colorbar()
-    #plt.scatter(center[:, 0], center[:, 1], c='black', marker='+', s=150)
+    plt.scatter(outputs_pca[:, 0], outputs_pca[:, 1], s = size, c = colours)
+    
     plt.xlim(-100, 100)
     plt.ylim(-100, 100)
     plt.xlabel("# PCA vector 1")
@@ -181,8 +191,6 @@ def latent_space_pca(n_components = 2, img_folder=c.output_image_folder):
             image     = images[0].to(c.device)
             condition = images[1].to(c.device)
             z, log_j = cinn.forward(image, condition)
-            print(z.shape)
-
             nll = torch.mean(z**2) / 2 - torch.mean(log_j) / c.ndim_total
      
             image_characteristics.append([nll.cpu().numpy(), z.cpu().numpy()])
