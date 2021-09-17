@@ -129,7 +129,7 @@ class AnimatedGif:
         animation = anim.ArtistAnimation(self.fig, self.images)
         animation.save(filename, writer="pillow", fps=2)
 
-def latent_space_pca(n_components = 8, img_folder=c.output_image_folder):
+def latent_space_pca(n_components = 2, img_folder=c.output_image_folder):
     ''' Perform PCA on latent space and interpolate in latent space with principal eigenvectors.'''
     counter = 0
     image_characteristics = []
@@ -169,10 +169,10 @@ def latent_space_pca(n_components = 8, img_folder=c.output_image_folder):
                     animation_images[-1].append([])
 
                 #Interpolate in latent space
-                for j, t in enumerate(np.linspace(-100, 100, 10)):
+                for j, t in enumerate(np.linspace(-200, 200, 20)):
                     z = torch.from_numpy(z_vector) * t
                     z = z.repeat(1, condition.shape[0]).to(c.device)
-                    recs, j = cinn.reverse_sample(z, condition)
+                    recs, jac = cinn.reverse_sample(z, condition)
                     recs = recs.cpu().numpy()
 
                     #Iterate over images in batch
@@ -184,14 +184,14 @@ def latent_space_pca(n_components = 8, img_folder=c.output_image_folder):
             #Store images in batch as gif animation
             for i, components in enumerate(animation_images):
                 for j, photo in enumerate(components):
+                    gif = AnimatedGif()
                     for k, frame in enumerate(photo):
-                        gif = AnimatedGif()
-                        gif.add(im, label=f"Frame: {k}")
+                        gif.add(frame, label=f"Frame: {k}")
                     gif.save(filename= f"{img_folder}/img_{j}_batch_{batch}_component_{i}.gif")
             batch += 1
 
+latent_space_pca()
 
 for i in range(8):
     torch.manual_seed(i+111)
-    latent_space_pca()
     #style_transfer_test_set(postfix=i)
