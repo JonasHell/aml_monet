@@ -18,8 +18,38 @@ Remember to:
 """
 
 cinn = models.MonetCINN_112_blocks10(c.lr)
+
+print("Loading state dict")
+if c.continue_training:
+  old_state_dict = cinn.state_dict()
+  new_state_dict = torch.load(c.model_path)
+
+  j_old = -1
+  j_new = -1
+
+  for i in range(28, 33):
+    #print(f"Current permutation index {i}")
+    key = f"cinn.module_list.{i}.perm"
+    if key in old_state_dict:
+      j_old = i
+    if key in new_state_dict:
+      j_new = i
+
+  print(j_old, j_new)
+  assert(j_old != -1)
+  assert(j_new != -1)
+
+  if j_old != j_new:
+    new_state_dict[f"cinn.module_list.{j_old}.perm"]     = new_state_dict[f"cinn.module_list.{j_new}.perm"]
+    new_state_dict[f"cinn.module_list.{j_old}.perm_inv"] = new_state_dict[f"cinn.module_list.{j_new}.perm_inv"]
+    del new_state_dict[f"cinn.module_list.{j_new}.perm"]
+    del new_state_dict[f"cinn.module_list.{j_new}.perm_inv"]
+
+  #state_dict = {k:v for k,v in torch.load(c.model_path).items() if 'tmp_var' not in k}
+  cinn.load_state_dict(new_state_dict)
+
 cinn.to(c.device)
-scheduler = torch.optim.lr_scheduler.StepLR(cinn.optimizer, 1, gamma=0.1)
+scheduler = torch.optim.lr_scheduler.StepLR(cinn.optimizer, 10, gamma=0.1)
 
 N_epochs = c.N_epochs
 t_start = time()
