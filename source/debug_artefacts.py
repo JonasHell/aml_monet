@@ -1,32 +1,53 @@
 # %%
+from models import MonetCINN_112_blocks10_debug
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 
-from models import MonetCINN_112_blocks10, ConditionNet
+from models import MonetCINN_112_blocks10, ConditionNet, MonetCINN_112_blocks10_debug
 
 # %%
-net = MonetCINN_112_blocks10(0.01)
+net = MonetCINN_112_blocks10_debug(0.01).cuda()
+net.eval()
 
 # %%
-x = torch.rand((3, 112, 112))
-c = torch.rand((3, 224, 224))
-
-z, _ = net.forward(x, c)
+c_given = net.cond_net.forward(torch.rand((1, 3, 224, 224)).cuda())
 
 # %%
-cond_net = ConditionNet()
-cond_net(c)
+N = 100
+diffs = np.zeros((N, 3, 112, 112))
+diffs_norm = np.zeros((N, 3, 112, 112))
+for i in range(N):
+    print(i)
+
+    x = torch.rand((1, 3, 112, 112)).cuda()
+    #c = torch.rand((1, 3, 224, 224)).cuda()
+
+    #z, _ = net.forward(x, c)
+    #rec_x, _ = net.reverse_sample(z, c)
+    z, _ = net.forward_c_given(x, c_given)
+    rec_x, _ = net.reverse_sample_c_given(z, c_given)
+
+    diffs[i] = x[0].cpu().detach().numpy() - rec_x[0].cpu().detach().numpy()
+    diffs_norm[i] = diffs[i] / x[0].cpu().detach().numpy()
 
 # %%
-pretrained_dict = torch.load('checkpoints/vgg11-8a719046.pth')
-pretrained_keys = list(pretrained_dict.keys())
+plt.plot(np.max(diffs, axis=(1,2,3)), label='max')
+plt.plot(np.min(diffs, axis=(1,2,3)), label='min')
+plt.plot(np.mean(diffs, axis=(1,2,3)), label='mean')
 
-for key, param in pretrained_dict.items():
-    print(key, param.shape)
+plt.legend()
+
+plt.show()
 
 # %%
-import torchvision
-import torch
-import os
+plt.plot(np.max(diffs_norm, axis=(1,2,3)), label='max')
+plt.plot(np.min(diffs_norm, axis=(1,2,3)), label='min')
+plt.plot(np.mean(diffs_norm, axis=(1,2,3)), label='mean')
 
-torch.hub.set_dir(os.getcwd())
-torchvision.models.vgg11(pretrained=True)
+#plt.ylim(-1, 1)
+plt.legend()
+
+plt.show()
+
+# %%

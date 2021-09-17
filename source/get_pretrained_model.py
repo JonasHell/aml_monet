@@ -162,3 +162,17 @@ squeeze = models.squeezenet1_0(pretrained=True)
 
 # %%
 squeeze.features[0:5]
+
+# %% check pretrained init
+from models import ConditionNet
+import torch
+
+cond_net = ConditionNet()
+
+pretrained_dict = torch.load('checkpoints/vgg11-8a719046.pth')
+pretrained_keys = list(pretrained_dict.keys())
+
+# initialize with pretrained weights and biases
+for i, (key, param) in enumerate(cond_net.named_parameters()):
+    print(key, type(param.data), param.data.shape)
+    print(pretrained_keys[i], type(pretrained_dict[pretrained_keys[i]]), pretrained_dict[pretrained_keys[i]].shape)
