@@ -114,3 +114,51 @@ net5 = MonetCINN_112_blocks10(0.01, pretrained_path)
 print(net5.state_dict().keys())
 
 # %%
+import numpy as np
+import torchvision.models as models
+
+net_dict = {}
+
+net_dict['alexnet'] = models.alexnet()
+net_dict['vgg11'] = models.vgg11()
+net_dict['vgg16'] = models.vgg16()
+net_dict['resnet18'] = models.resnet18()
+net_dict['resnet50'] = models.resnet50()
+net_dict['squeezenet'] = models.squeezenet1_0()
+net_dict['squeezenet1'] = models.squeezenet1_1()
+net_dict['densenet121'] = models.densenet121()
+net_dict['densenet161'] = models.densenet161()
+net_dict['inception'] = models.inception_v3()
+net_dict['googlenet'] = models.googlenet()
+net_dict['shufflenet05'] = models.shufflenet_v2_x0_5()
+net_dict['shufflenet1'] = models.shufflenet_v2_x1_0()
+net_dict['mobilenet_v2'] = models.mobilenet_v2()
+net_dict['mobilenet_v3_large'] = models.mobilenet_v3_large()
+net_dict['mobilenet_v3_small'] = models.mobilenet_v3_small()
+net_dict['resnext50_32x4d'] = models.resnext50_32x4d()
+net_dict['wide_resnet50_2'] = models.wide_resnet50_2()
+net_dict['mnasnet05'] = models.mnasnet0_5()
+net_dict['mnasnet1'] = models.mnasnet1_0()
+
+size_dict = {}
+
+for key, net in net_dict.items():
+    num_params = 0
+    for _, param in net.named_parameters():
+        num_params += np.product(param.shape)
+    size_dict[key] = num_params
+
+sorted_size_dict = {k: v for k, v in sorted(size_dict.items(), key=lambda item: item[1])}
+
+for k, v in sorted_size_dict.items():
+    print(k, ': ', v)
+
+# %%
+import torch
+torch.hub.set_dir('D:/Dropbox/Uni/Master/2021_09_12_AdvnMachLearn/aml_monet/source')
+
+# %%
+squeeze = models.squeezenet1_0(pretrained=True)
+
+# %%
+squeeze.features[0:5]
