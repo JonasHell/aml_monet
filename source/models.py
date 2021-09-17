@@ -654,8 +654,8 @@ class MonetCINN_112_blocks10_debug(nn.Module):
         nodes.append(Ff.OutputNode(nodes[-1], name='output'))
         #print(nodes[-1])
         #TODO: use GraphINN or ReversibleGraphNet??
-        return Ff.ReversibleGraphNet(nodes + split_nodes + condition_nodes)
-        #return Ff.GraphINN(nodes + split_nodes + condition_nodes)
+        #return Ff.ReversibleGraphNet(nodes + split_nodes + condition_nodes)
+        return Ff.GraphINN(nodes + split_nodes + condition_nodes)
 
         # problem für bericht: beim erstellen der graphen gibt es eine randomness, beim erstellen des graphen,
         # schwierig beim speichern und laden mit state_dict(), da die namen der parameter vond er reihenfogle bahängen
