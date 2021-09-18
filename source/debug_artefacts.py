@@ -3,11 +3,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from models import MonetCINN_112_blocks10, ConditionNet, MonetCINN_112_blocks10_debug, SimpleNet
+from models import *
 
 # %% create net
-net = MonetCINN_112_blocks10(0.01).cuda()
+net = MonetCINN_squeeze(0.01)#.cuda()
 net.eval()
+
+# %%
+cond_net = ConditionNet_squeeze()
+c = torch.rand((1, 3, 226, 226))
+cond_net(c)
 
 # %% output all layers with parameters
 for key, param in net.named_parameters():
@@ -21,13 +26,18 @@ c_given = net.cond_net.forward(torch.rand((1, 3, 224, 224)).cuda())
 
 # %% run 100 times with random tensor
 N = 10
-diffs = np.zeros((N, 3, 112, 112))
-diffs_norm = np.zeros((N, 3, 112, 112))
+#diffs = np.zeros((N, 3, 112, 112))
+#diffs_norm = np.zeros((N, 3, 112, 112))
+diffs = np.zeros((N, 3, 224, 224))
+diffs_norm = np.zeros((N, 3, 224, 224))
+
 for i in range(N):
     print(i)
 
-    x = torch.rand((1, 3, 112, 112)).cuda()
-    c = torch.rand((1, 3, 224, 224)).cuda()
+    #x = torch.rand((1, 3, 112, 112)).cuda()
+    #c = torch.rand((1, 3, 224, 224)).cuda()
+    x = torch.rand((1, 3, 224, 224))#.cuda()
+    c = torch.rand((1, 3, 226, 226))#.cuda()
 
     z, _ = net.forward(x, c)
     rec_x, _ = net.reverse_sample(z, c)

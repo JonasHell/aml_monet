@@ -16,7 +16,7 @@ import config as c
 import models
 import data
 
-cinn = models.MonetCINN_112_blocks10(0)
+cinn = models.MonetCINN_VGG(0)
 
 print("Loading state dict")
 old_state_dict = cinn.state_dict()

@@ -17,7 +17,7 @@ import config as c
 import models
 import data
 
-cinn = models.MonetCINN_112_blocks10(0)
+cinn = models.MonetCINN_VGG(0)
 cinn.to(c.device)
 state_dict = torch.load(c.model_path)
 for key in state_dict.keys():

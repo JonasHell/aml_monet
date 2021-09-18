@@ -17,7 +17,7 @@ Remember to:
 - Set output directory for model
 """
 
-cinn = models.MonetCINN_112_blocks10(c.lr)
+cinn = models.MonetCINN_VGG(c.lr)
 
 print("Loading state dict")
 if c.continue_training:

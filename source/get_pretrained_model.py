@@ -1,5 +1,5 @@
 # %%
-from source.models import MonetCINN_112_blocks10
+from source.models import MonetCINN_VGG
 import torchvision.models as models
 
 # %%
@@ -37,7 +37,7 @@ print(len(checkpoint))
 
 # %%
 import models
-cond_net = models.ConditionNet()
+cond_net = models.ConditionNet_VGG()
 print(cond_net.modules)
 print('********************')
 print()
@@ -76,47 +76,96 @@ for idx, m in enumerate(cinn.modules()):
 
 # %%
 import torch
-from models import MonetCINN_112_blocks10
+from models import MonetCINN_VGG
 
 pretrained_path = 'C:/Users/Jonas/.cache/torch/hub'
 
-net = MonetCINN_112_blocks10(0.01, pretrained_path)
+net = MonetCINN_VGG(0.01, pretrained_path)
 torch.save(net.state_dict(), 'checkpoint.pt')
 
 state_dict_loaded = torch.load('checkpoint.pt')
-net_loaded = MonetCINN_112_blocks10(0.01, pretrained_path)
+net_loaded = MonetCINN_VGG(0.01, pretrained_path)
 net_loaded.load_state_dict(state_dict_loaded)
 
 # %%
 import torch
-from models import MonetCINN_112_blocks10
+from models import MonetCINN_VGG
 
 pretrained_path = 'C:/Users/Jonas/.cache/torch/hub'
 
-net1 = MonetCINN_112_blocks10(0.01, pretrained_path)
+net1 = MonetCINN_VGG(0.01, pretrained_path)
 print(net1.state_dict().keys())
 
 # %%
-net2 = MonetCINN_112_blocks10(0.01, pretrained_path)
+net2 = MonetCINN_VGG(0.01, pretrained_path)
 print(net2.state_dict().keys())
 
 # %%
-net3 = MonetCINN_112_blocks10(0.01, pretrained_path)
+net3 = MonetCINN_VGG(0.01, pretrained_path)
 print(net3.state_dict().keys())
 
 # %%
-net4 = MonetCINN_112_blocks10(0.01, pretrained_path)
+net4 = MonetCINN_VGG(0.01, pretrained_path)
 print(net4.state_dict().keys())
 
 # %%
 # %%
-net5 = MonetCINN_112_blocks10(0.01, pretrained_path)
+net5 = MonetCINN_VGG(0.01, pretrained_path)
 print(net5.state_dict().keys())
+
+# %% check pretrained init
+from models import ConditionNet_VGG
+import torch
+
+cond_net = ConditionNet_VGG()
+
+pretrained_dict = torch.load('checkpoints/vgg11-8a719046.pth')
+pretrained_keys = list(pretrained_dict.keys())
+
+# initialize with pretrained weights and biases
+for i, (key, param) in enumerate(cond_net.named_parameters()):
+    print(key, type(param.data), param.data.shape)
+    print(pretrained_keys[i], type(pretrained_dict[pretrained_keys[i]]), pretrained_dict[pretrained_keys[i]].shape)
+
+# %%
+from models import ConditionNet_debug
+
+net = ConditionNet_debug()
+for key, param in net.named_parameters():
+    print(key)
+    print(param.shape)
+    print(param)
+    print()
+
+# %%
+net.initialize_zero()
+for key, param in net.named_parameters():
+    print(key)
+    print(param.shape)
+    print(param)
+    print()
+
+# %%
+import os
+
+net.initialize_pretrained(os.getcwd())
+for key, param in net.named_parameters():
+    print(key)
+    print(param.shape)
+    print(param)
+    print()
+
+# %%
+import torch
+
+pretrained_dict = torch.load('checkpoints/vgg11-8a719046.pth')
+print(pretrained_dict)
 
 # %%
 import numpy as np
 import torchvision.models as models
 
+# %%
 net_dict = {}
 
 net_dict['alexnet'] = models.alexnet()
@@ -154,25 +203,43 @@ for k, v in sorted_size_dict.items():
     print(k, ': ', v)
 
 # %%
+import os
 import torch
-torch.hub.set_dir('D:/Dropbox/Uni/Master/2021_09_12_AdvnMachLearn/aml_monet/source')
+torch.hub.set_dir(os.getcwd())
+
+# %%
+import torchvision.models as models
+squeeze = models.squeezenet1_1(pretrained=True)
+squeeze.eval()
 
 # %%
 squeeze = models.squeezenet1_0(pretrained=True)
+squeeze.eval()
+
+# %%
+squeeze
 
 # %%
 squeeze.features[0:5]
 
-# %% check pretrained init
-from models import ConditionNet
-import torch
+# %%
+y = torch.rand((1, 3, 226, 226))
+for i in range(len(squeeze.features)):
+    y = squeeze.features[i].forward(y)
+    print(i, y.shape)
 
-cond_net = ConditionNet()
+for i in range(len(squeeze.classifier)):
+    y = squeeze.classifier[i].forward(y)
+    print(i, y.shape)
 
-pretrained_dict = torch.load('checkpoints/vgg11-8a719046.pth')
-pretrained_keys = list(pretrained_dict.keys())
+# %%
+y = torch.rand((1, 3, 230, 230))
+y = squeeze(y)
+print(y.shape)
 
-# initialize with pretrained weights and biases
-for i, (key, param) in enumerate(cond_net.named_parameters()):
-    print(key, type(param.data), param.data.shape)
-    print(pretrained_keys[i], type(pretrained_dict[pretrained_keys[i]]), pretrained_dict[pretrained_keys[i]].shape)
+# %%
+y = torch.rand((1, 3, 230, 230))
+y = squeeze.features(y)
+y.shape
+
+# %%
