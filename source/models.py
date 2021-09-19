@@ -442,16 +442,16 @@ class ConditionNet_squeeze(nn.Module):
             #print(f"Output size: {outputs[-1].size()}")
         return outputs[1:]
 
-    def initialize_pretrained(self, pretrained_path):
+    def initialize_pretrained(self):
         # set where the downloaded model should be saved
-        torch.hub.set_dir(pretrained_path)
+        torch.hub.set_dir(c.squeeze_path)
         #torch.hub.set_dir(c.vgg11_path)
 
         # download model if not already done
         torchvision.models.squeezenet1_1(pretrained=True)
 
         # load pretrained weights and biases
-        pretrained_dict = torch.load(pretrained_path+'/checkpoints/squeezenet1_1-b8a52dc0.pth')
+        pretrained_dict = torch.load(c.squeeze_path+'/checkpoints/squeezenet1_1-b8a52dc0.pth')
         pretrained_keys = list(pretrained_dict.keys())
 
         # initialize with pretrained weights and biases
@@ -459,14 +459,14 @@ class ConditionNet_squeeze(nn.Module):
             param.data = pretrained_dict[pretrained_keys[i]]
 
 class MonetCINN_squeeze(nn.Module):
-    def __init__(self, learning_rate, pretrained_path=os.getcwd()):
+    def __init__(self, learning_rate):
         super().__init__()
 
         self.cinn = self.create_cinn()
         self.initialize_weights()
 
         self.cond_net = ConditionNet_squeeze()
-        self.cond_net.initialize_pretrained(pretrained_path)
+        self.cond_net.initialize_pretrained()
 
         self.trainable_parameters = [p for p in self.parameters() if p.requires_grad]
         self.optimizer = torch.optim.Adam(self.trainable_parameters, lr=learning_rate, betas=c.betas, eps=1e-6, weight_decay=c.weight_decay)

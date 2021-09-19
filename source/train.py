@@ -17,7 +17,7 @@ Remember to:
 - Set output directory for model
 """
 
-cinn = models.MonetCINN_VGG(c.lr)
+cinn = models.MonetCINN_squeeze(c.lr)
 
 loss = 0
 last_epoch = 0

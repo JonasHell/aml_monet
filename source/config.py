@@ -3,10 +3,10 @@ import torch
 #################
 # Architecture: #
 #################
-img_size  = 112
-cond_size = 224
+img_size  = 224
+cond_size = 226
 
-ndim_total = 3 * 112 * 112
+ndim_total = 3 * img_size * img_size
 
 #############################
 # Training hyperparameters: #
@@ -57,6 +57,7 @@ output_image_folder     = output_root + 'images/'
 checkpoint_save_interval = 10   #in epochs
 checkpoint_save_overwrite = True #Checkpoints are overwritten if set to True
 
+squeeze_path            = output_root + 'squeeze/'
 vgg11_path              = output_root + 'vgg11/'
 output_model_folder     = output_root + 'model/'
 
