@@ -82,12 +82,14 @@ class PairDataset(Dataset):
     image = torch.tensor(image, dtype = torch.float)
     if self.noise:
         image += 0.005 * torch.rand_like(image)
+        image[image>1]=1
 
     condition = np.transpose(condition, (2,0,1)).astype(np.float32)
     condition = torch.tensor(condition, dtype = torch.float)
     if self.noise:
         condition += 0.005 * torch.rand_like(condition)
-
+        condition[condition>1]=1
+        
     return image, condition
 
 print("Set up training data")

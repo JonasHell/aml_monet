@@ -11,16 +11,16 @@ ndim_total = 3 * img_size * img_size
 #############################
 # Training hyperparameters: #
 #############################
-N_epochs    = 10
-lr          = 1e-3
-batch_size  = 16
+N_epochs    = 30
+lr          = 5e-5
+batch_size  = 32
 test_batch_size  = 1
 
 #Total number of images used for training
-N_train     = 64
+N_train     = 6200
 
 #We take the first N_test images from the test dataset for validation and the N_val images after that for validation
-N_test      = 64
+N_test      = 4
 N_val       = 64
 
 if torch.cuda.is_available():
@@ -51,13 +51,14 @@ test_cond_folder       =  data_root + 'cyclegan test/real/'
 output_root = '/content/gdrive/MyDrive/CINN/'
 output_image_folder     = output_root + 'images/'
 
+seed = 314159
 #######################
 # Saving checkpoints: #
 #######################
-checkpoint_save_interval = 10   #in epochs
+checkpoint_save_interval = 20   #in epochs
 checkpoint_save_overwrite = True #Checkpoints are overwritten if set to True
 
-squeeze_path            = output_root + 'squeeze/'
+squeeze_path            = output_root + 'sqeeze/'
 vgg11_path              = output_root + 'vgg11/'
 output_model_folder     = output_root + 'model/'
 
@@ -67,4 +68,4 @@ continue_training = False
 #This is where the training algorithm stores the model
 model_output = output_model_folder + 'monet_cinn.pt'
 #This is where the evaluation algorithm reas the model from
-model_path   = output_model_folder + 'monet_cinn.pt'
+model_path   = output_model_folder + 'monet_cinn.pt_cinn_checkpoint_0000'
