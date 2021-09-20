@@ -9,7 +9,7 @@ import matplotlib.animation as anim
 
 import torch
 from tqdm import tqdm #tqdm is used to show progress bars
-
+import cv2
 from sklearn.decomposition import PCA
 
 import config as c
@@ -72,6 +72,7 @@ def style_transfer_test_set(temp=0.8, postfix=0, img_folder=c.output_image_folde
                 im[im<0] = 0
                 im[im>1] = 1
                 #print(im.shape)
+                im = cv2.bilateralFilter(im, 4, 15, 15)
                 cond_im = images[1][i]
                 cond_im = np.abs(np.transpose(cond_im, (1,2,0)))
                 cond_im = cond_im[1:-1, 1:-1, :]
@@ -290,6 +291,7 @@ def latent_space_pca(n_components = 32, img_folder=c.output_image_folder):
                         im = np.abs(np.transpose(im, (1,2,0)))
                         im[im<0] = 0
                         im[im>1] = 1
+                        im = cv2.bilateralFilter(im, 3, 20, 20)
 
                         cond_im = images[1][k]
                         cond_im = np.abs(np.transpose(cond_im, (1,2,0)))
