@@ -61,7 +61,7 @@ class PairDataset(Dataset):
       ], additional_targets={'image0': 'image'})
 
     self.scale_down = albumentations.Compose([
-                                          albumentations.Resize(img_size, img_size, always_apply=True)
+                                          albumentations.CenterCrop(img_size, img_size, always_apply=True)
     ])
 
 
