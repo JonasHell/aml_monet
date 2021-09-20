@@ -280,7 +280,7 @@ def latent_space_pca(n_components = 32, img_folder=c.output_image_folder):
                     norm = torch.max(torch.abs(z))
                     if norm != 0 and norm > 1:
                       z /= norm
-                    z = z.repeat(condition.shape[0], 1).to(c.device)d
+                    z = z.repeat(condition.shape[0], 1).to(c.device)
                     recs, jac = cinn.reverse_sample(z, condition)
                     recs = recs.cpu().numpy()
 
