@@ -6,7 +6,7 @@ import torch
 from models import *
 
 # %% create net
-net = MonetCINN_squeeze(0.01)#.cuda()
+net = MonetCINN_squeeze_large(0.01)#.cuda()
 net.eval()
 
 # %%

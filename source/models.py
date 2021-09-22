@@ -678,7 +678,231 @@ class MonetCINN_squeeze(nn.Module):
                 print('NIIIIICEEEEE!!!!!!')
                 param.data.fill_(0.)
      
+class MonetCINN_squeeze_large(nn.Module):
+    def __init__(self, learning_rate, pretrained_path=os.getcwd()):
+        super().__init__()
+
+        self.cinn = self.create_cinn()
+        self.initialize_weights()
+
+        self.cond_net = ConditionNet_squeeze()
+        self.cond_net.initialize_pretrained(pretrained_path)
+
+        self.trainable_parameters = [p for p in self.parameters() if p.requires_grad]
+        self.optimizer = torch.optim.Adam(self.trainable_parameters, lr=learning_rate, betas=c.betas, eps=1e-6, weight_decay=c.weight_decay)
+
+    def create_cinn(self):   
+        def subnet_conv(hidden_channels_1, hidden_channels_2, kernel_size):
+            padding = kernel_size // 2
+            return lambda in_channels, out_channels: nn.Sequential(
+                nn.Conv2d(in_channels, hidden_channels_1, kernel_size, padding=padding),
+                nn.ReLU(),
+                nn.Conv2d(hidden_channels_1, hidden_channels_2, kernel_size, padding=padding),
+                nn.ReLU(),
+                nn.BatchNorm2d(hidden_channels_2),
+                nn.Conv2d(hidden_channels_2, out_channels, kernel_size, padding=padding)
+            )
+
+        def subnet_fc(hidden_channels_1, hidden_channels_2):
+            return lambda in_channels, out_channels: nn.Sequential(
+                nn.Linear(in_channels, hidden_channels_1),
+                nn.ReLU(),
+                nn.Linear(hidden_channels_1, hidden_channels_2),
+                nn.ReLU(),
+                nn.Linear(hidden_channels_2, out_channels)
+            )
+
+        def add_stage(nodes, block_num, subnet_func, condition=None, split_nodes=None, split_sizes=None, downsample=True, prefix=''):
+            """
+            Convenience function that adds an entire stage to nodes.
+            """
+            # add specified number of blocks
+            for k in range(block_num):
+                subnet = subnet_func(block_num)
+                
+                # add current block
+                nodes.append(Ff.Node(
+                    nodes[-1],
+                    Fm.GLOWCouplingBlock,
+                    {'subnet_constructor': subnet, 'clamp': 2.0},
+                    conditions=condition, #TODO
+                    name=prefix+f'-block{k+1}'
+                ))
+
+                # add permutation after each block
+                nodes.append(Ff.Node(
+                    nodes[-1],
+                    Fm.PermuteRandom,
+                    {},
+                    name=prefix+f'-block{k+1}-perm'
+                ))
+
+            # split channels off
+            if split_nodes is not None:
+                nodes.append(Ff.Node(
+                    nodes[-1],
+                    Fm.Split,
+                    {'section_sizes': split_sizes, 'dim': 0},
+                    name=prefix+'split'
+                ))
+                
+                split_nodes.append(Ff.Node(
+                    nodes[-1].out1,
+                    Fm.Flatten,
+                    {},
+                    name=prefix+'flatten'
+                ))
+                
+            # add downsampling at the end of stage
+            if downsample:
+                nodes.append(Ff.Node(
+                    nodes[-1],
+                    Fm.IRevNetDownsampling,
+                    {},
+                    name=prefix+'-down'
+                ))
+            
+        # create nodes with input node
+        nodes = [Ff.InputNode(3, 224, 224)]
+
+        # create conditions
+        condition_nodes = [ Ff.ConditionNode(64, 112, 112),
+                            Ff.ConditionNode(128, 56, 56),
+                            Ff.ConditionNode(256, 28, 28),
+                            Ff.ConditionNode(512, 14, 14)]
+
+        # create split_nodes
+        split_nodes = []
+        
+        # stage 1
+        # one block (3 x 224 x 224)
+        # with conv3 subnet
+        subnet_func = lambda _: subnet_conv(32, 64, 3)
+        add_stage(nodes, 2, subnet_func,
+            prefix='stage1'
+        )
+
+        # stage 2
+        # one block (12 x 112 x 112)
+        # one with conv1 and one with conv3 subnet
+        subnet_func = lambda block_num: subnet_conv(64, 128, 3 if block_num%2 else 1)
+        add_stage(nodes, 4, subnet_func,
+            condition=condition_nodes[0],
+            split_nodes=split_nodes,
+            prefix='stage2'
+        )
+
+        # stage 3
+        # two blocks (24 x 56 x 56)
+        # one with conv1 and one with conv3 subnet
+        subnet_func = lambda block_num: subnet_conv(128, 256, 3 if block_num%2 else 1)
+        add_stage(nodes, 4, subnet_func,
+            condition=condition_nodes[1],
+            split_nodes=split_nodes,
+            prefix='stage3'
+        )
+
+        # stage 4
+        # two blocks (48 x 28 x 28)
+        # one with conv1 and one with conv3 subnet
+        subnet_func = lambda block_num: subnet_conv(128, 256, 3 if block_num%2 else 1)
+        add_stage(nodes, 4, subnet_func,
+            condition=condition_nodes[2],
+            split_nodes=split_nodes,
+            prefix='stage4'
+        )
+
+        # stage 5
+        # two blocks (96 x 14 x 14)
+        # one with conv1 and one with conv3 subnet
+        subnet_func = lambda block_num: subnet_conv(128, 256, 3 if block_num%2 else 1)
+        add_stage(nodes, 4, subnet_func,
+            condition=condition_nodes[3],
+            split_nodes=split_nodes,
+            split_sizes=[12, 84],
+            downsample=False,
+            prefix='stage5'
+        )
+
+        # flatten for fc part
+        nodes.append(Ff.Node(
+            nodes[-1],
+            Fm.Flatten,
+            {},
+            name='flatten'
+        ))
+
+        # stage 6
+        # one block (flat 2352)
+        # with fc subnetwork
+        subnet_func = lambda _: subnet_fc(1024, 1024)
+        add_stage(nodes, 4, subnet_func,
+            downsample=False,
+            prefix='stage6'
+        )
+
+        # concat all the splits and the output of fc part
+        nodes.append(Ff.Node(
+            [sn.out0 for sn in split_nodes] + [nodes[-1].out0],
+            Fm.Concat,
+            {'dim':0},
+            name='concat'
+        ))
+
+        # add output node
+        nodes.append(Ff.OutputNode(nodes[-1], name='output'))
+
+        return Ff.GraphINN(nodes + split_nodes + condition_nodes)
+
+        # problem für bericht: beim erstellen der graphen gibt es eine randomness, beim erstellen des graphen,
+        # schwierig beim speichern und laden mit state_dict(), da die namen der parameter vond er reihenfogle bahängen
+
+    def forward(self, monet, photo):
+        return self.cinn(monet, c=self.cond_net(photo), jac=True)
+
+    def reverse_sample(self, z, photo):
+        return self.cinn(z, c=self.cond_net(photo), rev=True)
+
+    def forward_c_given(self, monet, c):
+        return self.cinn(monet, c=c, jac=True)
+
+    def reverse_sample_c_given(self, z, c):
+        return self.cinn(z, c=c, rev=True)
+
+    def initialize_weights(self):
+        def initialize_weights_(m):
+            # Conv2d layers
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.xavier_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
+                    # xavier not possible for bias
+
+        # Xavier initialization
+        self.cinn.apply(initialize_weights_)
+
+        # initialize last conv layer of subnet with 0
+        for key, param in self.cinn.named_parameters():
+            split = key.split('.')
+
+            #DEBUG
+            #if param.requires_grad:   
+            if len(split) > 3 and split[3][-1] == '5': # last convolution in the coeff func
+                print(key)
+                param.data.fill_(0.)
+            
+            #TODO
+            #DEBUG
+            # fill last fc layer with 0 manually
+            fc_blocks = ['45', '47', '49', '51']
+            last_layers = ['.subnet1.4.weight', '.subnet2.4.weight']
+            fc_keys = ['module_list.' + i + j for i in fc_blocks for j in last_layers]
+            #if key == 'module_list.27.subnet1.4.weight' or key == 'module_list.27.subnet2.4.weight':
+            if key in fc_keys:
+                print('NIIIIICEEEEE!!!!!!')
+                param.data.fill_(0.)
      
+
 class ConditionNet_debug(nn.Module):
     def __init__(self):
         super().__init__()
