@@ -173,7 +173,7 @@ class MonetCINN_VGG(nn.Module):
 
             # add specified number of blocks
             for k in range(block_num):
-                subnet = subnet_func(block_num)
+                subnet = subnet_func(k)
                 
                 # add current block
                 nodes.append(Ff.Node(
@@ -498,7 +498,7 @@ class MonetCINN_squeeze(nn.Module):
             """
             # add specified number of blocks
             for k in range(block_num):
-                subnet = subnet_func(block_num)
+                subnet = subnet_func(k)
                 
                 # add current block
                 nodes.append(Ff.Node(
@@ -1054,7 +1054,7 @@ class MonetCINN_debug(nn.Module):
 
             # add specified number of blocks
             for k in range(block_num):
-                subnet = subnet_func(block_num)
+                subnet = subnet_func(k)
                 
                 # add current block
                 nodes.append(Ff.Node(
