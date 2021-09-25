@@ -1303,7 +1303,7 @@ class MonetCINN_simple(nn.Module):
             {'subnet_constructor': subnet, 'clamp': 2.0}
         ))
 
-        '''
+        
         nodes.append(Ff.Node(
             nodes[-1],
             Fm.HaarDownsampling,
@@ -1315,7 +1315,7 @@ class MonetCINN_simple(nn.Module):
             Fm.IRevNetDownsampling,
             {}
         ))
-
+        '''
         subnet = subnet_conv(32, 64, 3)
         nodes.append(Ff.Node(
             nodes[-1],
