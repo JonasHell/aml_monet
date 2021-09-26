@@ -15,6 +15,7 @@ Remember to:
 - Adapt number of epochs
 - Set learning rate
 - Set output directory for model
+- Enable continue_training in config if you want to continue training a model
 """
 
 cinn = models.MonetCINN_squeeze(c.lr)
