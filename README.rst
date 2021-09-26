@@ -5,7 +5,20 @@ Team: Daniel Galperin, Jonas Hellgoth, Alexander Kunkel
 About
 ^^^^^^^^^^^^^^^^
 
-Using conditional invertible neural networks for image-to-image translation with landscape photos and Monet paintings
+Using conditional invertible neural networks for image-to-image translation with landscape photos and Monet paintings.
+Our source code heavily draws on https://github.com/VLL-HD/conditional_INNs and the corresponding publication https://arxiv.org/abs/1907.02392.
+
+Directories
+^^^^^^^^^^^^^^^^
++---------------------------+--------------------------------------------------+
+| config.py                 | hyperparameters and paths                        |
++---------------------------+--------------------------------------------------+
+| data.py                   | load data from path specified in config.py       |
++---------------------------+--------------------------------------------------+
+| models.py                 | includes final architecture MonetCINN_squeeze    |
++---------------------------+--------------------------------------------------+
+| train.py & eval.py        | train and evaluate models                        |
++---------------------------+--------------------------------------------------+
 
 
 The model
@@ -18,7 +31,7 @@ For loading, set appropriate paths in config.py.
 Dependencies
 ^^^^^^^^^^^^^^^^
 
-All version numbers are only minimum version. Probably, most other versions will work too. 
+All version numbers are only the minimum version required to run the code. Probably, most other versions will work too. 
 
 +---------------------------+-------------------------------+
 | **Package**               | **Version**                   |
