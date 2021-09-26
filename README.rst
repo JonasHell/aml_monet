@@ -10,6 +10,9 @@ Our source code heavily draws on https://github.com/VLL-HD/conditional_INNs and 
 
 Directories
 ^^^^^^^^^^^^^^^^
+
+All relevant python files for the final project can be found in the source folder:
+
 +---------------------------+--------------------------------------------------+
 | config.py                 | hyperparameters and paths                        |
 +---------------------------+--------------------------------------------------+
@@ -20,6 +23,7 @@ Directories
 | train.py & eval.py        | train and evaluate models                        |
 +---------------------------+--------------------------------------------------+
 
+You can safely ignore all other directories and files. 
 
 The model
 ^^^^^^^^^^^^^^^^
