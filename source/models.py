@@ -901,7 +901,7 @@ class MonetCINN_squeeze_large(nn.Module):
             if key in fc_keys:
                 print('NIIIIICEEEEE!!!!!!')
                 param.data.fill_(0.)
-     
+
 
 class ConditionNet_debug(nn.Module):
     def __init__(self):
