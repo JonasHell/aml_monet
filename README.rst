@@ -1,6 +1,7 @@
 We are something of a painter ourselves
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Team: Daniel Galperin, Jonas Hellgoth, Alexander Kunkel
+This repository contains our final project for the lecture "Advanced Machine Learning" at the University of Heidelberg.
 
 About
 ^^^^^^^^^^^^^^^^
