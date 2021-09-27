@@ -73,7 +73,6 @@ cinn.to(c.device)
 cinn.eval()
 
 
- 
 def style_transfer(cond_index, img_folder=c.output_image_folder):
     '''
     Translate the hand picked data set into different styles once.
@@ -101,6 +100,7 @@ def style_transfer(cond_index, img_folder=c.output_image_folder):
     z_style          = z_style.repeat(c.test_batch_size, 1)
 
     style_numpy = np.transpose(style_img[0].cpu().numpy(), (1,2,0))
+    cond_numpy = np.transpose(style_cond[0].cpu().numpy(), (1,2,0))[1:-1, 1:-1, :]
 
     grey = np.ones((c.test_batch_size, 3, 226, 226), dtype=np.double) * 128/255
     grey_img = torch.tensor(grey).to(c.device, dtype=torch.float)
@@ -134,11 +134,11 @@ def style_transfer(cond_index, img_folder=c.output_image_folder):
             im_im = images[0][0]
             im_im = np.abs(np.transpose(im_im, (1,2,0)))
 
-            diff_im = im_im - cond_im + single_grey[1:-1, 1:-1, :]
+            diff_im = style_numpy - cond_numpy + single_grey[1:-1, 1:-1, :]
             diff_im[diff_im<0] = 0
             diff_im[diff_im>1] = 1
             
-            final_im = np.concatenate((im_im, cond_im, im, diff_im, grey_im), axis=1)
+            final_im = np.concatenate((im_im, cond_im, style_numpy, im, diff_im, grey_im), axis=1)
             plt.imsave(join(img_folder, '%.6i_%.3i.png' % (counter, cond_index)), final_im)
             counter += 1
 
