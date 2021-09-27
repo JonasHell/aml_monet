@@ -33,7 +33,7 @@ https://drive.google.com/file/d/1obP2slgHca-HhP31gpaQIm5Qs374-4pT/view?usp=shari
 
 For loading, set appropriate paths in config.py.
 
-The model
+The data
 ^^^^^^^^^^^^^^^^
 We were not sure if we are allowed to make the data sets public here. Therefore, please contact us if you wish to have access to the data we used.
 
