@@ -73,6 +73,7 @@ cinn.to(c.device)
 cinn.eval()
 
 
+ 
 def style_transfer(cond_index, img_folder=c.output_image_folder):
     '''
     Translate the hand picked data set into different styles once.
@@ -93,8 +94,8 @@ def style_transfer(cond_index, img_folder=c.output_image_folder):
     '''
 
     style_img, style_cond  = data.good_data[cond_index] #pick data.train_data, data.test_data, data.val_data with appropriate indices when needed
-    style_img  = style_img.to(c.device)
-    style_cond = style_cond.to(c.device)
+    style_img  = style_img.reshape(1, 3, 224, 224).to(c.device)
+    style_cond = style_cond.reshape(1, 3, 226, 226).to(c.device)
 
     z_style, j_style = cinn.forward(style_img, style_cond)
     z_style          = z_style.repeat(c.test_batch_size, 1)
@@ -111,7 +112,7 @@ def style_transfer(cond_index, img_folder=c.output_image_folder):
             condition = images[1].to(c.device)
 
             rec_grey, j = cinn.reverse_sample(z_style, grey_img)
-            rec_grey = recs.cpu().numpy()
+            rec_grey = rec_grey.cpu().numpy()
 
             recs, j = cinn.reverse_sample(z_style, condition)
             recs = recs.cpu().numpy()
@@ -126,11 +127,11 @@ def style_transfer(cond_index, img_folder=c.output_image_folder):
             im[im<0] = 0
             im[im>1] = 1
             
-            cond_im = images[1][i]
+            cond_im = images[1][0]
             cond_im = np.abs(np.transpose(cond_im, (1,2,0)))
             cond_im = cond_im[1:-1, 1:-1, :]
 
-            im_im = images[0][i]
+            im_im = images[0][0]
             im_im = np.abs(np.transpose(im_im, (1,2,0)))
 
             diff_im = im_im - cond_im + single_grey[1:-1, 1:-1, :]
